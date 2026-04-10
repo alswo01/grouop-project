@@ -1477,12 +1477,72 @@ def update_order_status_by_admin(order_id: str, action: str) -> dict:
 
     else:
         raise ValueError("지원하지 않는 관리자 주문 처리 동작입니다.")
+    
+def prompt_signup() -> None:
+    while True:
+        print("[회원가입]")
+        login_id = input("로그인 ID 입력 (0: 뒤로가기) > ").strip()
 
+        if login_id == "0":
+            return
+
+        if not is_valid_login_id(login_id):
+            print("오류: 로그인 ID는 1~10자의 영문자 또는 숫자여야 합니다.")
+            continue
+
+        users = load_users()
+        if find_user_by_login_id(users, login_id) is not None:
+            print("오류: 이미 존재하는 로그인 ID입니다.")
+            continue
+
+        password = input("비밀번호 입력 (0: 뒤로가기) > ").strip()
+        if password == "0":
+            return
+
+        if not is_valid_password(password):
+            print("오류: 비밀번호는 1~10자의 영문자 또는 숫자여야 합니다.")
+            continue
+
+        name = input("이름 입력 (0: 뒤로가기) > ").strip()
+        if name == "0":
+            return
+
+        if not is_valid_name(name):
+            print("오류: 이름은 1~4자의 한글이어야 합니다.")
+            continue
+
+        try:
+            create_user(login_id, password, name)
+            print("회원가입이 완료되었습니다.")
+            return
+        except ValueError as e:
+            print(f"오류: {e}")
+
+def prompt_non_login_menu() -> None:
+    while True:
+        print("[사전 프롬프트]")
+        print("1. 로그인")
+        print("2. 회원가입")
+        print("0. 프로그램 종료")
+
+        choice = input("선택 > ").strip()
+
+        if choice == "0":
+            print("프로그램을 종료합니다.")
+            break
+        elif choice == "1":
+            print("로그인 기능은 아직 구현 전입니다.")
+        elif choice == "2":
+            prompt_signup()
+        elif not choice.isdigit():
+            print("오류: 숫자만 입력 가능합니다.")
+        else:
+            print("오류: 올바른 메뉴 번호를 입력하세요.")
 
 def main() -> None:
     initialize_data_files()
     print_initialization_result()
-
+    prompt_non_login_menu()
 
     
 if __name__ == "__main__":
