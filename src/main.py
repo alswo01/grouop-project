@@ -5,7 +5,8 @@ from pathlib import Path
 # =====================================
 # 데이터 경로 설정
 # =====================================
-DATA_DIR = Path.home() / "soprj" / "261A04"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
 
 USER_FILE = DATA_DIR / "user.txt"
 PRODUCT_FILE = DATA_DIR / "product.txt"
