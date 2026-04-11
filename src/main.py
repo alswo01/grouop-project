@@ -1478,6 +1478,95 @@ def update_order_status_by_admin(order_id: str, action: str) -> dict:
     else:
         raise ValueError("지원하지 않는 관리자 주문 처리 동작입니다.")
 
+def user_main_menu_prompt(current_user: dict) -> None:
+    while True:
+        print("[사용자 메인 메뉴]")
+        print("1. 상품 조회 / 검색")
+        print("2. 장바구니")
+        print("3. 주문 관리")
+        print("4. 로그아웃")
+        choice = input("선택 > ").strip()
+
+        if choice == "1":
+            print("상품 조회 / 검색 기능은 아직 구현 전입니다.")
+        elif choice == "2":
+            print("장바구니 기능은 아직 구현 전입니다.")
+        elif choice == "3":
+            print("주문 관리 기능은 아직 구현 전입니다.")
+        elif choice == "4":
+            print("로그아웃이 완료되었습니다.")
+            return
+        elif choice.isdigit():
+            print("오류: 올바른 메뉴 번호를 입력하세요.")
+        else:
+            print("오류: 숫자만 입력 가능합니다.")
+
+
+def admin_main_prompt(current_user: dict) -> None:
+    while True:
+        print("[관리자 주 프롬프트]")
+        print("1. 상품 관리")
+        print("2. 주문 관리")
+        print("3. 로그아웃")
+        choice = input("선택 > ").strip()
+
+        if choice == "1":
+            print("상품 관리 기능은 아직 구현 전입니다.")
+        elif choice == "2":
+            print("주문 관리 기능은 아직 구현 전입니다.")
+        elif choice == "3":
+            print("로그아웃이 완료되었습니다.")
+            return
+        elif choice.isdigit():
+            print("오류: 올바른 메뉴 번호를 입력하세요.")
+        else:
+            print("오류: 숫자만 입력 가능합니다.")
+
+
+def login_prompt() -> None:
+    while True:
+        print("[로그인]")
+
+        login_id = input("로그인 ID를 입력 (0: 뒤로가기) > ")
+        if login_id == "0":
+            return
+
+        if normalize_text(login_id) == "":
+            print("오류: 로그인 ID는 공백일 수 없습니다.")
+            continue
+
+        if not is_valid_login_id(login_id):
+            print("오류: 로그인 ID 형식이 올바르지 않습니다.")
+            continue
+
+        password = input("비밀번호를 입력 (0: 뒤로가기) > ")
+        if password == "0":
+            return
+
+        if normalize_text(password) == "":
+            print("오류: 비밀번호는 공백일 수 없습니다.")
+            continue
+
+        if not is_valid_password(password):
+            print("오류: 비밀번호 형식이 올바르지 않습니다.")
+            continue
+
+        user = authenticate_user(login_id, password)
+
+        if user is None:
+            print("오류: 로그인 ID 또는 비밀번호가 일치하지 않습니다.")
+            continue
+
+        print("로그인에 성공했습니다.")
+
+        if user["role"] == "ADMIN":
+            print("관리자 계정으로 로그인되었습니다.")
+            admin_main_prompt(user)
+        else:
+            print("일반 사용자 계정으로 로그인되었습니다.")
+            user_main_menu_prompt(user)
+
+        return
 
 def main() -> None:
     initialize_data_files()
