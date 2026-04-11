@@ -1479,132 +1479,86 @@ def update_order_status_by_admin(order_id: str, action: str) -> dict:
         raise ValueError("지원하지 않는 관리자 주문 처리 동작입니다.")
     
 # =====================================
-# 회원가입 / 로그인 / 비로그인 프롬프트 함수
+# 회원가입 부 프롬프트 함수
 # =====================================
 def prompt_signup() -> None:
     while True:
         print("[회원가입]")
 
-        login_id = input("로그인 ID 입력 (0: 뒤로가기) > ").strip()
+        login_id = input("로그인 ID 입력 (0: 뒤로가기) > ")
         if login_id == "0":
             return
-        if login_id == "":
-            print("오류: 로그인 ID는 공백일 수 없습니다.")
+        if login_id.strip() == "":
+            print("오류: 로그인 ID는 1~10자의 영문자 또는 숫자여야 합니다.")
             continue
         if any(ch in login_id for ch in "|%&"):
             print("오류: 로그인 ID에는 특수문자를 사용할 수 없습니다.")
             continue
-        if not is_valid_login_id(login_id):
+        if not is_valid_login_id(login_id.strip()):
             print("오류: 로그인 ID는 1~10자의 영문자 또는 숫자여야 합니다.")
             continue
 
         users = load_users()
-        if find_user_by_login_id(users, login_id) is not None:
+        if find_user_by_login_id(users, login_id.strip()) is not None:
             print("오류: 이미 존재하는 로그인 ID입니다.")
             continue
 
-        password = input("비밀번호 입력 (0: 뒤로가기) > ").strip()
+        password = input("비밀번호 입력 (0: 뒤로가기) > ")
         if password == "0":
             return
-        if password == "":
-            print("오류: 비밀번호는 공백일 수 없습니다.")
+        if password.strip() == "":
+            print("오류: 비밀번호는 1~10자의 영문자 또는 숫자여야 합니다.")
             continue
-        if not is_valid_password(password):
+        if not is_valid_password(password.strip()):
             print("오류: 비밀번호는 1~10자의 영문자 또는 숫자여야 합니다.")
             continue
 
-        name = input("이름 입력 (0: 뒤로가기) > ").strip()
+        name = input("이름 입력 (0: 뒤로가기) > ")
         if name == "0":
             return
-        if name == "":
-            print("오류: 이름은 공백일 수 없습니다.")
+        if name.strip() == "":
+            print("오류: 이름은 1~4자의 한글이어야 합니다.")
             continue
-        if not is_valid_name(name):
+        if not is_valid_name(name.strip()):
             print("오류: 이름은 1~4자의 한글이어야 합니다.")
             continue
 
         try:
-            create_user(login_id, password, name)
+            create_user(login_id.strip(), password.strip(), name.strip())
             print("회원가입이 완료되었습니다.")
             return
         except ValueError as e:
             print(f"오류: {e}")
 
-def user_main_menu_prompt(current_user: dict) -> None:
-    while True:
-        print("[사용자 메인 메뉴]")
-        print("1. 상품 조회 / 검색")
-        print("2. 장바구니")
-        print("3. 주문 관리")
-        print("4. 로그아웃")
-        choice = input("선택 > ").strip()
 
-        if choice == "1":
-            print("상품 조회 / 검색 기능은 아직 구현 전입니다.")
-        elif choice == "2":
-            print("장바구니 기능은 아직 구현 전입니다.")
-        elif choice == "3":
-            print("주문 관리 기능은 아직 구현 전입니다.")
-        elif choice == "4":
-            print("로그아웃이 완료되었습니다.")
-            return
-        elif choice.isdigit():
-            print("오류: 올바른 메뉴 번호를 입력하세요.")
-        else:
-            print("오류: 숫자만 입력 가능합니다.")
-
-
-def admin_main_prompt(current_user: dict) -> None:
-    while True:
-        print("[관리자 주 프롬프트]")
-        print("1. 상품 관리")
-        print("2. 주문 관리")
-        print("3. 로그아웃")
-        choice = input("선택 > ").strip()
-
-        if choice == "1":
-            print("상품 관리 기능은 아직 구현 전입니다.")
-        elif choice == "2":
-            print("주문 관리 기능은 아직 구현 전입니다.")
-        elif choice == "3":
-            print("로그아웃이 완료되었습니다.")
-            return
-        elif choice.isdigit():
-            print("오류: 올바른 메뉴 번호를 입력하세요.")
-        else:
-            print("오류: 숫자만 입력 가능합니다.")
-
-
-def login_prompt() -> None:
+# =====================================
+# 로그인 부 프롬프트 함수
+# =====================================
+def prompt_login() -> None:
     while True:
         print("[로그인]")
 
         login_id = input("로그인 ID를 입력 (0: 뒤로가기) > ")
         if login_id == "0":
             return
-
-        if normalize_text(login_id) == "":
+        if login_id.strip() == "":
             print("오류: 로그인 ID는 공백일 수 없습니다.")
             continue
-
-        if not is_valid_login_id(login_id):
+        if not is_valid_login_id(login_id.strip()):
             print("오류: 로그인 ID 형식이 올바르지 않습니다.")
             continue
 
         password = input("비밀번호를 입력 (0: 뒤로가기) > ")
         if password == "0":
             return
-
-        if normalize_text(password) == "":
+        if password.strip() == "":
             print("오류: 비밀번호는 공백일 수 없습니다.")
             continue
-
-        if not is_valid_password(password):
+        if not is_valid_password(password.strip()):
             print("오류: 비밀번호 형식이 올바르지 않습니다.")
             continue
 
-        user = authenticate_user(login_id, password)
-
+        user = authenticate_user(login_id.strip(), password.strip())
         if user is None:
             print("오류: 로그인 ID 또는 비밀번호가 일치하지 않습니다.")
             continue
@@ -1620,47 +1574,10 @@ def login_prompt() -> None:
 
         return
 
-def prompt_login() -> None:
-    while True:
-        print("[로그인]")
 
-        login_id = input("로그인 ID를 입력 (0: 뒤로가기) > ").strip()
-        if login_id == "0":
-            return
-        if login_id == "":
-            print("오류: 로그인 ID는 공백일 수 없습니다.")
-            continue
-        if not is_valid_login_id(login_id):
-            print("오류: 로그인 ID 형식이 올바르지 않습니다.")
-            continue
-
-        password = input("비밀번호를 입력 (0: 뒤로가기) > ").strip()
-        if password == "0":
-            return
-        if password == "":
-            print("오류: 비밀번호는 공백일 수 없습니다.")
-            continue
-        if not is_valid_password(password):
-            print("오류: 비밀번호 형식이 올바르지 않습니다.")
-            continue
-
-        user = authenticate_user(login_id, password)
-        if user is None:
-            print("오류: 로그인 ID 또는 비밀번호가 일치하지 않습니다.")
-            continue
-
-        print("로그인이 완료되었습니다.")
-
-        if user["role"] == "USER":
-            user_main_menu_prompt(user)
-        elif user["role"] == "ADMIN":
-            print("관리자 기능은 아직 구현 전입니다.")
-        else:
-            print("오류: 알 수 없는 사용자 권한입니다.")
-
-        return
-
-
+# =====================================
+# 비로그인 상태 주 프롬프트 함수
+# =====================================
 def prompt_non_login_menu() -> None:
     while True:
         print("[사전 프롬프트]")
@@ -1670,10 +1587,6 @@ def prompt_non_login_menu() -> None:
 
         choice = input("선택 > ").strip()
 
-        if not choice.isdigit():
-            print("오류: 숫자만 입력 가능합니다.")
-            continue
-
         if choice == "0":
             print("프로그램을 종료합니다.")
             break
@@ -1682,11 +1595,14 @@ def prompt_non_login_menu() -> None:
         elif choice == "2":
             prompt_signup()
         else:
-            print("오류: 올바른 메뉴 번호를 입력하세요.")
+            if choice.isdigit():
+                print("오류: 올바른 메뉴 번호를 입력하세요.")
+            else:
+                print("오류: 숫자만 입력 가능합니다.")
 
 
 # =====================================
-# 사용자 메인 메뉴 프롬프트 함수
+# 사용자 메인 메뉴 주 프롬프트 함수
 # =====================================
 def user_main_menu_prompt(current_user: dict) -> None:
     while True:
@@ -1698,10 +1614,6 @@ def user_main_menu_prompt(current_user: dict) -> None:
 
         choice = input("선택 > ").strip()
 
-        if not choice.isdigit():
-            print("오류: 숫자만 입력 가능합니다.")
-            continue
-
         if choice == "1":
             print("상품 조회 / 검색 기능은 아직 구현 전입니다.")
         elif choice == "2":
@@ -1712,7 +1624,36 @@ def user_main_menu_prompt(current_user: dict) -> None:
             print("로그아웃이 완료되었습니다.")
             return
         else:
-            print("오류: 올바른 메뉴 번호를 입력하세요.")
+            if choice.isdigit():
+                print("오류: 올바른 메뉴 번호를 입력하세요.")
+            else:
+                print("오류: 숫자만 입력 가능합니다.")
+
+
+# =====================================
+# 관리자 주 프롬프트 함수
+# =====================================
+def admin_main_prompt(current_user: dict) -> None:
+    while True:
+        print("[관리자 주 프롬프트]")
+        print("1. 상품 관리")
+        print("2. 주문 관리")
+        print("3. 로그아웃")
+
+        choice = input("선택 > ").strip()
+
+        if choice == "1":
+            print("상품 관리 기능은 아직 구현 전입니다.")
+        elif choice == "2":
+            print("주문 관리 기능은 아직 구현 전입니다.")
+        elif choice == "3":
+            print("로그아웃이 완료되었습니다.")
+            return
+        else:
+            if choice.isdigit():
+                print("오류: 올바른 메뉴 번호를 입력하세요.")
+            else:
+                print("오류: 숫자만 입력 가능합니다.")
 
 
 # =====================================
