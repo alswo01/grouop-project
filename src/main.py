@@ -1293,6 +1293,198 @@ def get_cart_items_for_user(user_id: str) -> list[dict]:
 
     return [item for item in cart_items if item["cart_id"] == cart["cart_id"]]
 
+# =====================================
+# 장바구니 화면 보조 함수
+# =====================================
+def format_money(value: int) -> str:
+    return f"{value}원"
+
+
+def build_cart_view_rows(user_id: str) -> list[dict]:
+    """
+    현재 사용자의 Cart_Item과 Product를 product_id 기준으로 결합해
+    장바구니 조회 화면용 데이터를 만든다.
+    """
+    products = load_products()
+    items = get_cart_items_for_user(user_id)
+
+    rows = []
+    for item in items:
+        product = find_product_by_product_id(products, item["product_id"])
+        if product is None:
+            continue
+
+        price = int(product["price"])
+        quantity = int(item["quantity"])
+        stock = int(product["stock"])
+        item_total = price * quantity
+
+        rows.append({
+            "product_id": product["product_id"],
+            "product_name": product["product_name"],
+            "price": price,
+            "quantity": quantity,
+            "item_total": item_total,
+            "stock": stock,
+            "stock_text": "품절" if stock == 0 else f"{stock}개",
+            "stock_warning": quantity > stock,
+        })
+
+    rows.sort(key=lambda x: int(x["product_id"]))
+    return rows
+
+
+def print_cart_view(user_id: str) -> None:
+    """
+    장바구니 조회 결과를 출력한다.
+    """
+    try:
+        rows = build_cart_view_rows(user_id)
+    except Exception:
+        print("오류: 장바구니 정보를 불러오지 못했습니다.")
+        return
+
+    print("[장바구니 조회]")
+
+    if not rows:
+        print("장바구니가 비어 있습니다.")
+        return
+
+    total_types = len(rows)
+    total_price = sum(row["item_total"] for row in rows)
+
+    print(f"총 상품 종류: {total_types}개")
+    print(f"총 금액: {format_money(total_price)}")
+    print("------------------------------")
+
+    for idx, row in enumerate(rows, start=1):
+        print(f"[{idx}]")
+        print(f"상품 ID: {row['product_id']}")
+        print(f"상품명: {row['product_name']}")
+        print(f"가격: {format_money(row['price'])}")
+        print(f"수량: {row['quantity']}개")
+        print(f"상품 합계: {format_money(row['item_total'])}")
+        print(f"재고: {row['stock_text']}")
+        if row["stock_warning"]:
+            print("재고 경고: 현재 재고보다 많이 담겨 있습니다.")
+        print("------------------------------")
+
+
+# =====================================
+# 장바구니 부 프롬프트 함수
+# =====================================
+def prompt_add_product_to_cart(current_user: dict) -> None:
+    user_id = current_user["user_id"]
+
+    while True:
+        print("[상품 추가]")
+        product_id = input("상품 ID 입력 > ").strip()
+        quantity = input("수량 입력 > ").strip()
+
+        if not is_valid_numeric_id(product_id):
+            print("오류: 존재하지 않는 상품입니다.")
+            continue
+
+        if not is_valid_quantity(quantity):
+            print("오류: 수량은 1 이상 입력하세요.")
+            continue
+
+        try:
+            product = find_product_by_product_id(load_products(), product_id)
+            if product is None:
+                print("오류: 존재하지 않는 상품입니다.")
+                continue
+
+            if int(product["stock"]) == 0:
+                print("오류: 품절 상품은 장바구니에 담을 수 없습니다.")
+                continue
+
+            add_product_to_cart(user_id, product_id, quantity)
+            print("상품이 장바구니에 추가되었습니다.")
+
+            rows = build_cart_view_rows(user_id)
+            for row in rows:
+                if row["product_id"] == product_id and row["stock_warning"]:
+                    print("경고: 현재 재고보다 많이 담겨 있습니다. 실제 주문 가능 여부는 주문 시 확인됩니다.")
+                    break
+            return
+
+        except ValueError as e:
+            print(f"오류: {e}")
+            return
+        except Exception:
+            print("오류: 장바구니를 저장하지 못했습니다.")
+            return
+
+
+def prompt_remove_product_from_cart(current_user: dict) -> None:
+    user_id = current_user["user_id"]
+
+    while True:
+        print("[상품 삭제]")
+        product_id = input("삭제할 상품 ID 입력 > ").strip()
+
+        if not is_valid_numeric_id(product_id):
+            print("오류: 장바구니에 존재하지 않는 상품입니다.")
+            continue
+
+        try:
+            product = find_product_by_product_id(load_products(), product_id)
+            if product is None:
+                print("오류: 존재하지 않는 상품입니다.")
+                continue
+
+            remove_product_from_cart(user_id, product_id)
+            print("상품이 장바구니에서 삭제되었습니다.")
+            return
+
+        except ValueError as e:
+            message = str(e)
+            if "장바구니에 존재하지 않는 상품" in message:
+                print("오류: 장바구니에 존재하지 않는 상품입니다.")
+                continue
+            print(f"오류: {message}")
+            return
+        except Exception:
+            print("오류: 장바구니를 저장하지 못했습니다.")
+            return
+
+
+# =====================================
+# 장바구니 주 프롬프트 함수
+# =====================================
+def cart_main_prompt(current_user: dict) -> None:
+    user_id = current_user["user_id"]
+
+    try:
+        get_or_create_cart(user_id)
+    except Exception:
+        print("오류: 장바구니 정보를 불러오지 못했습니다.")
+        return
+
+    while True:
+        print("[장바구니 메뉴]")
+        print("1. 장바구니 조회")
+        print("2. 상품 추가")
+        print("3. 상품 삭제")
+        print("0. 이전 메뉴")
+
+        choice = input("선택 > ").strip()
+
+        if choice == "1":
+            print_cart_view(user_id)
+        elif choice == "2":
+            prompt_add_product_to_cart(current_user)
+        elif choice == "3":
+            prompt_remove_product_from_cart(current_user)
+        elif choice == "0":
+            return
+        else:
+            if choice.isdigit():
+                print("오류: 올바른 메뉴 번호를 입력하세요.")
+            else:
+                print("오류: 숫자만 입력 가능합니다.")
+
 
 # =====================================
 # 주문 생성 함수
@@ -1617,7 +1809,7 @@ def user_main_menu_prompt(current_user: dict) -> None:
         if choice == "1":
             print("상품 조회 / 검색 기능은 아직 구현 전입니다.")
         elif choice == "2":
-            print("장바구니 기능은 아직 구현 전입니다.")
+            cart_main_prompt(current_user)
         elif choice == "3":
             print("주문 관리 기능은 아직 구현 전입니다.")
         elif choice == "4":

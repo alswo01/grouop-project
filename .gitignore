@@ -6,3 +6,4 @@ venv/
 .vscode/data/
 
 src/data/
+desktop.ini
