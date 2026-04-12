@@ -565,10 +565,14 @@ def load_cart_items(
         cart_items, duplicate_found = merge_duplicate_cart_products(cart_items)
 
         if duplicate_found:
-            print("[WARNING] 동일 장바구니 내 중복 상품이 발견되어 수량을 합산하였습니다.")
+            print(
+                "[WARNING] 동일 장바구니 내 중복 상품이 발견되어 수량을 합산하였습니다."
+            )
 
         if check_cart_stock_warnings(cart_items, products):
-            print("[WARNING] 장바구니에 담긴 상품 수량이 현재 재고를 초과하는 항목이 있습니다.")
+            print(
+                "[WARNING] 장바구니에 담긴 상품 수량이 현재 재고를 초과하는 항목이 있습니다."
+            )
 
     return cart_items
 
@@ -578,13 +582,15 @@ def load_cart_items(
 # =====================================
 def save_users(users: list[dict]) -> None:
     lines = [
-        serialize_record([
-            user["user_id"],
-            user["login_id"],
-            user["password"],
-            user["name"],
-            user["role"],
-        ])
+        serialize_record(
+            [
+                user["user_id"],
+                user["login_id"],
+                user["password"],
+                user["name"],
+                user["role"],
+            ]
+        )
         for user in users
     ]
     write_lines(USER_FILE, lines)
@@ -592,13 +598,15 @@ def save_users(users: list[dict]) -> None:
 
 def save_products(products: list[dict]) -> None:
     lines = [
-        serialize_record([
-            product["product_id"],
-            product["category_id"],
-            product["product_name"],
-            product["price"],
-            product["stock"],
-        ])
+        serialize_record(
+            [
+                product["product_id"],
+                product["category_id"],
+                product["product_name"],
+                product["price"],
+                product["stock"],
+            ]
+        )
         for product in products
     ]
     write_lines(PRODUCT_FILE, lines)
@@ -606,10 +614,12 @@ def save_products(products: list[dict]) -> None:
 
 def save_carts(carts: list[dict]) -> None:
     lines = [
-        serialize_record([
-            cart["cart_id"],
-            cart["user_id"],
-        ])
+        serialize_record(
+            [
+                cart["cart_id"],
+                cart["user_id"],
+            ]
+        )
         for cart in carts
     ]
     write_lines(CART_FILE, lines)
@@ -617,12 +627,14 @@ def save_carts(carts: list[dict]) -> None:
 
 def save_cart_items(cart_items: list[dict]) -> None:
     lines = [
-        serialize_record([
-            item["cart_item_id"],
-            item["cart_id"],
-            item["product_id"],
-            item["quantity"],
-        ])
+        serialize_record(
+            [
+                item["cart_item_id"],
+                item["cart_id"],
+                item["product_id"],
+                item["quantity"],
+            ]
+        )
         for item in cart_items
     ]
     write_lines(CART_ITEM_FILE, lines)
@@ -684,13 +696,15 @@ def load_order_items() -> list[dict]:
 
 def save_orders(orders: list[dict]) -> None:
     lines = [
-        serialize_record([
-            order["order_id"],
-            order["user_id"],
-            order["total_price"],
-            order["order_status"],
-            order["order_time"],
-        ])
+        serialize_record(
+            [
+                order["order_id"],
+                order["user_id"],
+                order["total_price"],
+                order["order_status"],
+                order["order_time"],
+            ]
+        )
         for order in orders
     ]
     write_lines(ORDER_FILE, lines)
@@ -698,14 +712,16 @@ def save_orders(orders: list[dict]) -> None:
 
 def save_order_items(order_items: list[dict]) -> None:
     lines = [
-        serialize_record([
-            item["order_item_id"],
-            item["order_id"],
-            item["product_id"],
-            item["product_name"],
-            item["price"],
-            item["quantity"],
-        ])
+        serialize_record(
+            [
+                item["order_item_id"],
+                item["order_id"],
+                item["product_id"],
+                item["product_name"],
+                item["price"],
+                item["quantity"],
+            ]
+        )
         for item in order_items
     ]
     write_lines(ORDER_ITEM_FILE, lines)
@@ -920,7 +936,9 @@ def check_cart_stock_warnings(
     """
     장바구니 수량이 상품 재고를 초과하는 항목이 하나라도 있으면 True 반환.
     """
-    product_stock_map = {product["product_id"]: int(product["stock"]) for product in products}
+    product_stock_map = {
+        product["product_id"]: int(product["stock"]) for product in products
+    }
 
     for item in cart_items:
         product_id = item["product_id"]
@@ -1228,13 +1246,17 @@ def add_product_to_cart(user_id: str, product_id: str, quantity: str) -> None:
 
     # 이미 같은 상품이 장바구니에 있는지 확인
     for item in cart_items:
-        if item["cart_id"] == cart["cart_id"] and item["product_id"] == normalize_text(product_id):
+        if item["cart_id"] == cart["cart_id"] and item["product_id"] == normalize_text(
+            product_id
+        ):
             new_quantity = int(item["quantity"]) + int(quantity)
             item["quantity"] = str(new_quantity)
             save_cart_items(cart_items)
 
             if new_quantity > int(product["stock"]):
-                print("[WARNING] 장바구니에 담긴 상품 수량이 현재 재고를 초과하는 항목이 있습니다.")
+                print(
+                    "[WARNING] 장바구니에 담긴 상품 수량이 현재 재고를 초과하는 항목이 있습니다."
+                )
             return
 
     # 없으면 새 cart_item 생성
@@ -1249,7 +1271,9 @@ def add_product_to_cart(user_id: str, product_id: str, quantity: str) -> None:
     save_cart_items(cart_items)
 
     if int(quantity) > int(product["stock"]):
-        print("[WARNING] 장바구니에 담긴 상품 수량이 현재 재고를 초과하는 항목이 있습니다.")
+        print(
+            "[WARNING] 장바구니에 담긴 상품 수량이 현재 재고를 초과하는 항목이 있습니다."
+        )
 
 
 def remove_product_from_cart(user_id: str, product_id: str) -> None:
@@ -1267,7 +1291,9 @@ def remove_product_from_cart(user_id: str, product_id: str) -> None:
 
     target_index = None
     for index, item in enumerate(cart_items):
-        if item["cart_id"] == cart["cart_id"] and item["product_id"] == normalize_text(product_id):
+        if item["cart_id"] == cart["cart_id"] and item["product_id"] == normalize_text(
+            product_id
+        ):
             target_index = index
             break
 
@@ -1292,6 +1318,7 @@ def get_cart_items_for_user(user_id: str) -> list[dict]:
         return []
 
     return [item for item in cart_items if item["cart_id"] == cart["cart_id"]]
+
 
 # =====================================
 # 장바구니 화면 보조 함수
@@ -1319,16 +1346,18 @@ def build_cart_view_rows(user_id: str) -> list[dict]:
         stock = int(product["stock"])
         item_total = price * quantity
 
-        rows.append({
-            "product_id": product["product_id"],
-            "product_name": product["product_name"],
-            "price": price,
-            "quantity": quantity,
-            "item_total": item_total,
-            "stock": stock,
-            "stock_text": "품절" if stock == 0 else f"{stock}개",
-            "stock_warning": quantity > stock,
-        })
+        rows.append(
+            {
+                "product_id": product["product_id"],
+                "product_name": product["product_name"],
+                "price": price,
+                "quantity": quantity,
+                "item_total": item_total,
+                "stock": stock,
+                "stock_text": "품절" if stock == 0 else f"{stock}개",
+                "stock_warning": quantity > stock,
+            }
+        )
 
     rows.sort(key=lambda x: int(x["product_id"]))
     return rows
@@ -1405,7 +1434,9 @@ def prompt_add_product_to_cart(current_user: dict) -> None:
             rows = build_cart_view_rows(user_id)
             for row in rows:
                 if row["product_id"] == product_id and row["stock_warning"]:
-                    print("경고: 현재 재고보다 많이 담겨 있습니다. 실제 주문 가능 여부는 주문 시 확인됩니다.")
+                    print(
+                        "경고: 현재 재고보다 많이 담겨 있습니다. 실제 주문 가능 여부는 주문 시 확인됩니다."
+                    )
                     break
             return
 
@@ -1487,6 +1518,219 @@ def cart_main_prompt(current_user: dict) -> None:
 
 
 # =====================================
+# 주문 관리 주 프롬프트 함수
+# =====================================
+def prompt_order_confirm(current_user: dict) -> None:
+    user_id = current_user["user_id"]
+
+    print("[주문 확정]")
+
+    try:
+        rows = build_cart_view_rows(user_id)
+    except Exception:
+        print("오류: 장바구니 정보를 불러오지 못했습니다.")
+        return
+
+    if not rows:
+        print("오류: 장바구니가 비어 있습니다.")
+        return
+
+    print("현재 장바구니 내역입니다:")
+    for row in rows:
+        line_total = int(row["item_total"])
+        print(f"- {row['product_name']} ({row['quantity']}개): {line_total:,}원")
+
+    print("---------------------------------------")
+    total_price = sum(int(row["item_total"]) for row in rows)
+    print(f"총 결제 예정 금액: {total_price:,}원")
+
+    if total_price > 1_000_000:
+        print("오류: 총 주문 금액은 1,000,000원을 초과할 수 없습니다.")
+        return
+
+    if any(row["stock_warning"] for row in rows):
+        print("오류: 재고가 부족한 상품이 포함되어 있습니다.")
+        return
+
+    print()
+    confirm = input("정말 주문하시겠습니까? (Yes/No) > ").strip()
+
+    if confirm != "Yes":
+        print("주문이 취소되었습니다.")
+        return
+
+    try:
+        new_order = create_order_from_cart(user_id)
+        print(f"주문이 성공적으로 생성되었습니다. (주문ID: {new_order['order_id']})")
+        print("장바구니를 비웠습니다.")
+    except ValueError as e:
+        print(f"오류: {e}")
+    except Exception:
+        print("오류: 주문을 처리하지 못했습니다.")
+
+
+def prompt_order_history(current_user: dict) -> None:
+    user_id = normalize_text(current_user["user_id"])
+
+    while True:
+        try:
+            orders = load_orders()
+        except Exception:
+            print("오류: 주문 내역을 불러오지 못했습니다.")
+            return
+
+        my_orders = [order for order in orders if order["user_id"] == user_id]
+        my_orders.sort(key=lambda x: x["order_time"], reverse=True)
+
+        print(f"[나의 주문 내역] 총 {len(my_orders)}건")
+        print()
+
+        if not my_orders:
+            print("조회할 주문 내역이 없습니다.")
+            return
+
+        for idx, order in enumerate(my_orders, start=1):
+            try:
+                dt = datetime.strptime(order["order_time"], "%y%m%d%H%M%S")
+                order_time_text = dt.strftime("%y/%m/%d %H:%M:%S")
+            except ValueError:
+                order_time_text = order["order_time"]
+
+            print(f"[{idx}] 주문ID: {order['order_id']}")
+            print(f"주문일시: {order_time_text}")
+            print(f"총 금액: {int(order['total_price']):,}원")
+            print(f"상태: {order['order_status']}")
+            print()
+
+        choice = input("상세 조회할 주문 번호(순번) 입력 (0: 이전 메뉴) > ").strip()
+
+        if choice == "0":
+            return
+
+        if not choice.isdigit():
+            print("오류 : 올바른 번호를 입력하세요.")
+            continue
+
+        selected_index = int(choice)
+        if selected_index < 1 or selected_index > len(my_orders):
+            print("오류 : 올바른 번호를 입력하세요.")
+            continue
+
+        selected_order = my_orders[selected_index - 1]
+        prompt_order_detail(selected_order)
+
+
+def prompt_order_detail(order: dict) -> None:
+    try:
+        order_items = load_order_items()
+    except Exception:
+        print("오류: 주문 상세 내역을 불러오지 못했습니다.")
+        return
+
+    selected_items = get_order_items_by_order_id(order_items, order["order_id"])
+
+    print("[주문 상세 내역]")
+    print(f"- 주문ID: {order['order_id']}")
+    print(f"- 주문상태: {order['order_status']}")
+    print()
+    print("---")
+    print()
+
+    for idx, item in enumerate(selected_items, start=1):
+        quantity = int(item["quantity"])
+        snapshot_price = int(item["price"])
+        print(f"{idx}. {item['product_name']} ({quantity}개) : {snapshot_price:,}원")
+
+    print()
+    print("---")
+    print()
+    print(f"- 총 결제 금액: {int(order['total_price']):,}원")
+    print("(엔터를 누르면 주문 목록으로 돌아갑니다.)")
+
+    while True:
+        move_back = input().strip()
+        if move_back == "":
+            return
+        print("오류 : 엔터를 입력하세요.")
+
+
+def prompt_order_cancel_request(current_user: dict) -> None:
+    user_id = normalize_text(current_user["user_id"])
+
+    while True:
+        print("[주문 취소 요청]")
+        order_id = input("취소할 주문 ID를 입력하세요 > ").strip()
+
+        try:
+            orders = load_orders()
+        except Exception:
+            print("오류 : 주문 정보를 불러오지 못했습니다.")
+            return
+
+        order = find_order_by_order_id(orders, order_id)
+        if order is None:
+            print("오류 : 존재하지 않는 주문 ID입니다.")
+            print()
+            continue
+
+        if order["user_id"] != user_id:
+            print("오류 : 본인의 주문만 취소 요청할 수 있습니다.")
+            print()
+            continue
+
+        if order["order_status"] != "PENDING":
+            print("오류 : 취소할 수 없는 상태입니다.")
+            print()
+            continue
+
+        print()
+        print(f"주문ID {order['order_id']}번의 취소 가능 여부를 확인 중입니다...")
+        print(f"상태: {order['order_status']} (취소 가능)")
+        print()
+
+        confirm = input(
+            "정말 취소 요청을 보내시겠습니까? (실행: ABORT / 취소: 기타 입력) > "
+        ).strip()
+        if confirm != "ABORT":
+            print("취소 요청을 취소했습니다.")
+            return
+
+        try:
+            request_order_cancellation(user_id, order_id)
+            print("취소 요청이 정상적으로 접수되었습니다. (상태: CANCEL_REQUESTED)")
+            return
+        except ValueError as e:
+            print(f"오류 : {e}")
+            print()
+            continue
+        except Exception:
+            print("오류 : 주문 취소 요청을 처리하지 못했습니다.")
+            return
+
+
+def order_main_prompt(current_user: dict) -> None:
+    while True:
+        print("[주문 관리]")
+        print("1. 주문하기 (장바구니 내역)")
+        print("2. 주문 내역 조회")
+        print("3. 주문 취소 요청")
+        print("0. 이전 메뉴")
+
+        choice = input("선택 > ").strip()
+
+        if choice == "1":
+            prompt_order_confirm(current_user)
+        elif choice == "2":
+            prompt_order_history(current_user)
+        elif choice == "3":
+            prompt_order_cancel_request(current_user)
+        elif choice == "0":
+            return
+        else:
+            print("오류 : 올바른 메뉴 번호를 입력하세요.")
+
+
+# =====================================
 # 주문 생성 함수
 # =====================================
 def get_current_order_time() -> str:
@@ -1509,7 +1753,9 @@ def create_order_from_cart(user_id: str) -> dict:
     if cart is None:
         raise ValueError("장바구니가 비어 있습니다.")
 
-    user_cart_items = [item for item in cart_items if item["cart_id"] == cart["cart_id"]]
+    user_cart_items = [
+        item for item in cart_items if item["cart_id"] == cart["cart_id"]
+    ]
     if not user_cart_items:
         raise ValueError("장바구니가 비어 있습니다.")
 
@@ -1543,20 +1789,21 @@ def create_order_from_cart(user_id: str) -> dict:
     for item in user_cart_items:
         product = find_product_by_product_id(products, item["product_id"])
 
-        order_items.append({
-            "order_item_id": next_order_item_id,
-            "order_id": new_order["order_id"],
-            "product_id": product["product_id"],
-            "product_name": product["product_name"],
-            "price": product["price"],
-            "quantity": item["quantity"],
-        })
+        order_items.append(
+            {
+                "order_item_id": next_order_item_id,
+                "order_id": new_order["order_id"],
+                "product_id": product["product_id"],
+                "product_name": product["product_name"],
+                "price": product["price"],
+                "quantity": item["quantity"],
+            }
+        )
         next_order_item_id = str(int(next_order_item_id) + 1)
 
     # 주문 성공 후 장바구니 비우기
     remaining_cart_items = [
-        item for item in cart_items
-        if item["cart_id"] != cart["cart_id"]
+        item for item in cart_items if item["cart_id"] != cart["cart_id"]
     ]
 
     save_orders(orders)
@@ -1669,7 +1916,8 @@ def update_order_status_by_admin(order_id: str, action: str) -> dict:
 
     else:
         raise ValueError("지원하지 않는 관리자 주문 처리 동작입니다.")
-    
+
+
 # =====================================
 # 회원가입 부 프롬프트 함수
 # =====================================
@@ -1811,7 +2059,7 @@ def user_main_menu_prompt(current_user: dict) -> None:
         elif choice == "2":
             cart_main_prompt(current_user)
         elif choice == "3":
-            print("주문 관리 기능은 아직 구현 전입니다.")
+            order_main_prompt(current_user)
         elif choice == "4":
             print("로그아웃이 완료되었습니다.")
             return
