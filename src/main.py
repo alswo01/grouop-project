@@ -1586,7 +1586,7 @@ def prompt_order_history(current_user: dict) -> None:
         print()
 
         if not my_orders:
-            print("조회할 주문 내역이 없습니다.")
+            print("오류: 조회할 주문 내역이 없습니다.")
             return
 
         for idx, order in enumerate(my_orders, start=1):
@@ -1602,21 +1602,21 @@ def prompt_order_history(current_user: dict) -> None:
             print(f"상태: {order['order_status']}")
             print()
 
-        choice = input("상세 조회할 주문 번호(순번) 입력 (0: 이전 메뉴) > ").strip()
+        choice = input("상세 조회할 주문 ID 입력 (0: 이전 메뉴) > ").strip()
 
         if choice == "0":
             return
 
-        if not choice.isdigit():
+        selected_order = None
+        for order in my_orders:
+            if order["order_id"] == choice:
+                selected_order = order
+                break
+
+        if selected_order is None:
             print("오류 : 올바른 번호를 입력하세요.")
             continue
 
-        selected_index = int(choice)
-        if selected_index < 1 or selected_index > len(my_orders):
-            print("오류 : 올바른 번호를 입력하세요.")
-            continue
-
-        selected_order = my_orders[selected_index - 1]
         prompt_order_detail(selected_order)
 
 
