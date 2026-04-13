@@ -1941,6 +1941,199 @@ def update_order_status_by_admin(order_id: str, action: str) -> dict:
 
 
 # =====================================
+# 상품 조회 / 검색 (6.3, 7.3, 7.4, 7.5)
+# =====================================
+def parse_category_record(line: str) -> dict | None:
+    parts = split_record(line, 2)
+    if parts is None:
+        return None
+
+    category_id, category_name = parts
+
+    if not is_valid_category_id(category_id):
+        return None
+    if not is_valid_category_name(category_name):
+        return None
+
+    return {
+        "category_id": normalize_text(category_id),
+        "category_name": normalize_text(category_name),
+    }
+
+
+def load_categories() -> list[dict]:
+    categories = []
+
+    for line in read_lines(CATEGORY_FILE):
+        if normalize_text(line) == "":
+            continue
+
+        record = parse_category_record(line)
+        if record is not None:
+            categories.append(record)
+
+    return deduplicate_categories(categories)
+
+
+def deduplicate_categories(categories: list[dict]) -> list[dict]:
+    result = []
+    seen_category_ids = set()
+
+    for category in categories:
+        category_id = category["category_id"]
+        if category_id in seen_category_ids:
+            continue
+
+        seen_category_ids.add(category_id)
+        result.append(category)
+
+    return result
+
+
+def build_category_name_map(categories: list[dict]) -> dict[str, str]:
+    return {
+        category["category_id"]: category["category_name"]
+        for category in categories
+    }
+
+
+def sort_products_by_product_id(products: list[dict]) -> list[dict]:
+    return sorted(products, key=lambda product: int(product["product_id"]))
+
+
+def print_product_table(products: list[dict], category_name_map: dict[str, str]) -> None:
+    print("상품 ID | 상품 명 | 카테고리 | 가격 | 재고")
+    for product in products:
+        category_name = category_name_map.get(product["category_id"], "알 수 없음")
+        print(
+            f"{product['product_id']} | {product['product_name']} | "
+            f"{category_name} | {product['price']}원 | {product['stock']}개"
+        )
+
+
+def show_all_products_prompt() -> None:
+    print("[ 전체 상품 조회 ]")
+
+    products = sort_products_by_product_id(load_products())
+    if not products:
+        print("오류 : 등록된 상품이 없습니다.")
+        return
+
+    categories = load_categories()
+    category_name_map = build_category_name_map(categories)
+    print_product_table(products, category_name_map)
+
+
+def print_category_search_prompt() -> None:
+    print("[ 카테고리 별 조회 ]")
+    print("1 : 식품")
+    print("2 : 생활용품")
+    print("3 : 주방용품")
+    print("4 : 전자제품")
+    print("5 : 문구")
+    print("6 : 의류")
+    print("7 : 기타")
+    print("")
+
+
+def show_products_by_category_prompt() -> None:
+    products = sort_products_by_product_id(load_products())
+    if not products:
+        print("등록된 상품이 없습니다.")
+        return
+
+    categories = load_categories()
+    category_name_map = build_category_name_map(categories)
+
+    while True:
+        print_category_search_prompt()
+        category_input = input("카테고리 ID 입력 (0 : 뒤로가기)> ").strip()
+
+        if category_input == "0":
+            return
+        if category_input not in {"1", "2", "3", "4", "5", "6", "7"}:
+            print("오류: 존재하는 카테고리 ID를 입력하세요.")
+            continue
+
+        filtered_products = [
+            product for product in products
+            if product["category_id"] == category_input
+        ]
+
+        if not filtered_products:
+            print("해당 카테고리에 등록된 상품이 없습니다.")
+            return
+
+        print_product_table(filtered_products, category_name_map)
+        return
+
+
+def normalize_search_key(value: str) -> str:
+    return re.sub(r"\s+", "", value).lower()
+
+
+def show_products_by_name_prompt() -> None:
+    categories = load_categories()
+    category_name_map = build_category_name_map(categories)
+    products = sort_products_by_product_id(load_products())
+
+    print("[상품명 검색]")
+    while True:
+        keyword_input = input("검색어 입력 > ")
+        keyword = keyword_input.strip()
+
+        if keyword == "":
+            print("오류: 검색어를 1자 이상 입력하세요.")
+            continue
+
+        keyword_tokens = [normalize_search_key(token) for token in keyword.split() if token]
+
+        filtered_products = []
+        for product in products:
+            product_name_key = normalize_search_key(product["product_name"])
+
+            if all(token in product_name_key for token in keyword_tokens):
+                filtered_products.append(product)
+
+        if not filtered_products:
+            print("검색 결과가 없습니다.")
+            print(f"입력한 검색어: {keyword}")
+            return
+
+        print_product_table(filtered_products, category_name_map)
+        return
+
+
+def run_product_search_menu_prompt() -> None:
+    while True:
+        print("[상품 조회 / 검색]")
+        print("1. 전체 상품 조회")
+        print("2. 카테고리별 조회")
+        print("3. 상품명 검색")
+        print("0. 이전 메뉴")
+        selected_menu = input("선택 > ").strip()
+
+        if selected_menu == "1":
+            show_all_products_prompt()
+        elif selected_menu == "2":
+            show_products_by_category_prompt()
+        elif selected_menu == "3":
+            show_products_by_name_prompt()
+        elif selected_menu == "0":
+            return
+        else:
+            print("오류: 올바른 메뉴 번호를 입력하세요.")
+
+
+def product_search_main_prompt() -> None:
+    """
+    기존 사용자 메인 메뉴에서 연결할 수 있는 진입 함수.
+    (예: user_main_menu_prompt의 1번 메뉴에서 호출)
+    """
+    run_product_search_menu_prompt()
+
+
+# =====================================
 # 회원가입 부 프롬프트 함수
 # =====================================
 def prompt_signup() -> None:
@@ -2077,7 +2270,7 @@ def user_main_menu_prompt(current_user: dict) -> None:
         choice = input("선택 > ").strip()
 
         if choice == "1":
-            print("상품 조회 / 검색 기능은 아직 구현 전입니다.")
+            product_search_main_prompt()
         elif choice == "2":
             cart_main_prompt(current_user)
         elif choice == "3":
