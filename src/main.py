@@ -2002,7 +2002,7 @@ def sort_products_by_product_id(products: list[dict]) -> list[dict]:
 
 
 def print_product_table(products: list[dict], category_name_map: dict[str, str]) -> None:
-    print("상품 ID | 상품명 | 카테고리 | 가격 | 재고")
+    print("상품 ID | 상품 명 | 카테고리 | 가격 | 재고")
     for product in products:
         category_name = category_name_map.get(product["category_id"], "알 수 없음")
         print(
@@ -2126,6 +2126,10 @@ def run_product_search_menu_prompt() -> None:
 
 
 def product_search_main_prompt() -> None:
+    """
+    기존 사용자 메인 메뉴에서 연결할 수 있는 진입 함수.
+    (예: user_main_menu_prompt의 1번 메뉴에서 호출)
+    """
     run_product_search_menu_prompt()
 
 
