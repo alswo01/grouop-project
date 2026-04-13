@@ -543,10 +543,29 @@ def load_carts(users: list[dict] | None = None) -> list[dict]:
 
     return carts
 
+def has_stale_cart_items(cart_items, carts, orders):
+    cart_id_to_user = {
+        cart["cart_id"]: cart["user_id"]
+        for cart in carts
+    }
+
+    ordered_user_ids = {
+        order["user_id"]
+        for order in orders
+    }
+
+    for item in cart_items:
+        user_id = cart_id_to_user.get(item["cart_id"])
+
+        if user_id in ordered_user_ids:
+            return True
+
+    return False
 
 def load_cart_items(
     carts: list[dict] | None = None,
     products: list[dict] | None = None,
+    orders: list[dict] | None = None,
 ) -> list[dict]:
     cart_items = []
 
@@ -573,6 +592,9 @@ def load_cart_items(
             print(
                 "[WARNING] 장바구니에 담긴 상품 수량이 현재 재고를 초과하는 항목이 있습니다."
             )
+
+        if orders is not None and has_stale_cart_items(cart_items, carts, orders):
+            print("[WARNING] 주문 완료 이후에도 남아 있는 장바구니 항목이 있습니다.")
 
     return cart_items
 
