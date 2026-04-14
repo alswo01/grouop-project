@@ -149,12 +149,12 @@ def is_valid_login_id(value: str) -> bool:
     """
     login_id:
     - 영문자와 숫자만 허용
-    - 길이 1~10
+    - 길이 2~10
     - 앞뒤 공백 제거 후 검사
     """
     value = normalize_text(value)
 
-    if not (1 <= len(value) <= 10):
+    if not (2 <= len(value) <= 10):
         return False
     if not re.fullmatch(r"[A-Za-z0-9]+", value):
         return False
@@ -165,12 +165,12 @@ def is_valid_password(value: str) -> bool:
     """
     password:
     - 영문자와 숫자만 허용
-    - 길이 1~10
+    - 길이 2~10
     - 앞뒤 공백 제거 후 검사
     """
     value = normalize_text(value)
 
-    if not (1 <= len(value) <= 10):
+    if not (2 <= len(value) <= 10):
         return False
     if not re.fullmatch(r"[A-Za-z0-9]+", value):
         return False
