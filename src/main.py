@@ -25,15 +25,24 @@ ALL_FILES = [
     CART_FILE,
     CART_ITEM_FILE,
 ]
-
-# 카테고리 매핑 (기획서 4.2.8 기준)
+# 카테고리 매핑
 CAT_MAP = {"1": "식품", "2": "생활용품", "3": "주방용품", "4": "전자제품", "5": "문구", "6": "의류", "7": "기타"}
+
 
 # =====================================
 # 초기 데이터
 # =====================================
 DEFAULT_ADMIN_RECORD = "1|admin|1234|관리자|ADMIN"
-DEFAULT_CATEGORY_RECORDS = ["1|식품", "2|생활용품", "3|주방용품", "4|전자제품", "5|문구", "6|의류", "7|기타"]
+
+DEFAULT_CATEGORY_RECORDS = [
+    "1|식품",
+    "2|생활용품",
+    "3|주방용품",
+    "4|전자제품",
+    "5|문구",
+    "6|의류",
+    "7|기타",
+]
 
 
 # =====================================
@@ -200,8 +209,9 @@ def is_valid_product_name(value: str) -> bool:
 
     if not (1 <= len(value) <= 20):
         return False
-
-    return bool(re.fullmatch(r"[가-힣a-zA-Z0-9 ]+", value))
+    if "|" in value or "%" in value or "&" in value:
+        return False
+    return True
 
 
 def is_valid_price(value: str) -> bool:
@@ -994,9 +1004,6 @@ def authenticate_user(login_id: str, password: str) -> dict | None:
 # =====================================
 # 상품 서비스 함수
 # =====================================
-def find_product_by_id(prods, pid):
-    return next((p for p in prods if p['product_id'] == pid), None)
-
 def find_product_by_name(products: list[dict], product_name: str) -> dict | None:
     target = normalize_text(product_name)
     for product in products:
@@ -2065,16 +2072,10 @@ def user_main_menu_prompt(current_user: dict) -> None:
             else:
                 print("오류: 숫자만 입력 가능합니다.")
 
-# =====================================
-# 프롬프트 제어 (UI) - 관리자 파트
-# =====================================
 
-# -------------------------------------
-# 1. 관리자 주 프롬프트 (6.6)
-# -------------------------------------
-# -------------------------------------
-# 1. 관리자 주 프롬프트 (6.6)
-# -------------------------------------
+# =====================================
+# 관리자 주 프롬프트 함수
+# =====================================
 def admin_main_prompt(current_user: dict):
     while True:
         print(f"\n[관리자 주 프롬프트]")
@@ -2092,7 +2093,6 @@ def admin_main_prompt(current_user: dict):
             return
         else:
             print("오류 : 올바른 메뉴 번호를 입력하세요.")
-
 
 # -------------------------------------
 # 2. 상품 관리 (6.7)
@@ -2136,11 +2136,11 @@ def admin_add_product_flow():
             print("오류 : 판매중인 상품명과 동일합니다.")
             continue
         break
+    print(f"\n[카테고리 등록]")
+    print(f"판매할 상품의 이름을 등록하세요 : {name}")
 
-        # [7.14] 카테고리 등록 (브로가 원했던 바로 그 완벽한 디테일!)
+     # [7.14] 카테고리 등록
     while True:
-        print(f"\n[카테고리 등록]")
-        print(f"판매할 상품의 이름을 등록하세요 : {name}")
         print("**카테고리**")
         for k, v in CAT_MAP.items():
             print(f"{k}. {v}")
@@ -2207,7 +2207,7 @@ def admin_product_edit_flow():
             print("오류 : 올바른 상품 ID를 입력하세요.")
             continue
 
-        product = find_product_by_id(products, p_id)
+        product = find_product_by_product_id(products, p_id)
         if not product:
             print("오류 : 등록된 상품 ID를 입력하세요.")
             continue
@@ -2229,8 +2229,8 @@ def admin_product_edit_flow():
             return False
 
         # 각 항목별 수정 로직 (기획서 7.19~7.22 준수)
-        if field_choice == "1":  # 상품명 수정
-            while True:  # 👈 성공할 때까지 계속 물어봄
+        if field_choice == "1":
+            while True:
                 new_val = input("판매할 상품의 이름을 등록하세요 : ").strip()
                 if is_valid_product_name(new_val):
                     if find_product_by_name(load_products(), new_val) and new_val != product['product_name']:
@@ -2334,14 +2334,14 @@ def admin_order_status_change_flow(order_id):
         # ★ 기획서 5.3.3 방어: 주문 당시 정보와 현재 정보 비교
         info_needed = False
         for i in items:
-            p = find_product_by_id(prods, i['product_id'])
+            p = find_product_by_product_id(prods, i['product_id'])
             if p and (p['product_name'] != i['product_name'] or p['price'] != i['price']):
                 info_needed = True
                 break
         if info_needed:
             print("\n[INFO] 주문 상품 정보는 주문 시점의 상품명 및 가격을 기준으로 유지됩니다")
 
-        # 1. 주문 상세 정보 (표 헤더 및 내용) 출력
+        # 1. 주문 상세 정보 출력
         is_insufficient = is_order_stock_insufficient(order_id)
         order_note = "상품 재고 부족" if order['order_status'] == "PENDING" and is_insufficient else "없음"
 
@@ -2354,7 +2354,7 @@ def admin_order_status_change_flow(order_id):
         print("\n주문 상품 목록")
         print(f"{'상품명':<15} | {'주문 수량':<8} | {'가격':<10} | {'비고'}")
         for i in items:
-            p_data = find_product_by_id(prods, i['product_id'])
+            p_data = find_product_by_product_id(prods, i['product_id'])
             # 개별 상품 단위 재고 부족 판단 (주문이 PENDING 상태일 때만 판단)
             p_note = "상품 부족" if order['order_status'] == "PENDING" and (
                         not p_data or int(p_data['stock']) < int(i['quantity'])) else "없음"
@@ -2367,7 +2367,7 @@ def admin_order_status_change_flow(order_id):
         if action == "0":
             return False
 
-        # 4. 상태 변경 처리 (기획서 명세에 따라 처리 후 주 메뉴(6.6)로 복귀하기 위해 True 리턴)
+        # 4. 상태 변경 처리
         if action == "1":
             if order['order_status'] != "PENDING":
                 print("처리가 완료된 주문입니다.")
@@ -2400,13 +2400,14 @@ def admin_order_status_change_flow(order_id):
             # 1, 2, 3, 0 이외의 이상한 값 입력 시 에러 띄우고 다시 입력받음
             print("오류 : 올바른 메뉴 번호를 입력하세요.")
             continue
-
 # =====================================
-# 메인 실행부
+# 메인 실행 함수
 # =====================================
-def main():
+def main() -> None:
     initialize_data_files()
-    prompt_non_login_menu() # 위에 있는 '진짜' 팀원 로직을 호출함
+    print_initialization_result()
+    prompt_non_login_menu()
+
 
 if __name__ == "__main__":
     main()
