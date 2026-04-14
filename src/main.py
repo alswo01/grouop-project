@@ -2146,13 +2146,13 @@ def prompt_signup() -> None:
         if login_id == "0":
             return
         if login_id.strip() == "":
-            print("오류: 로그인 ID는 1~10자의 영문자 또는 숫자여야 합니다.")
+            print("오류: 로그인 ID는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
         if any(ch in login_id for ch in "|%&"):
             print("오류: 로그인 ID에는 특수문자를 사용할 수 없습니다.")
             continue
         if not is_valid_login_id(login_id.strip()):
-            print("오류: 로그인 ID는 1~10자의 영문자 또는 숫자여야 합니다.")
+            print("오류: 로그인 ID는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
 
         users = load_users()
@@ -2164,10 +2164,10 @@ def prompt_signup() -> None:
         if password == "0":
             return
         if password.strip() == "":
-            print("오류: 비밀번호는 1~10자의 영문자 또는 숫자여야 합니다.")
+            print("오류: 비밀번호는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
         if not is_valid_password(password.strip()):
-            print("오류: 비밀번호는 1~10자의 영문자 또는 숫자여야 합니다.")
+            print("오류: 비밀번호는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
 
         name = input("이름 입력 (0: 뒤로가기) > ")
@@ -2202,7 +2202,7 @@ def prompt_login() -> None:
             print("오류: 로그인 ID는 공백일 수 없습니다.")
             continue
         if not is_valid_login_id(login_id.strip()):
-            print("오류: 로그인 ID 형식이 올바르지 않습니다.")
+            print("오류: 로그인 ID는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
 
         password = input("비밀번호를 입력 (0: 뒤로가기) > ")
@@ -2212,7 +2212,7 @@ def prompt_login() -> None:
             print("오류: 비밀번호는 공백일 수 없습니다.")
             continue
         if not is_valid_password(password.strip()):
-            print("오류: 비밀번호 형식이 올바르지 않습니다.")
+            print("오류: 비밀번호는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
 
         user = authenticate_user(login_id.strip(), password.strip())
