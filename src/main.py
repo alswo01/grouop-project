@@ -2145,51 +2145,53 @@ def prompt_signup() -> None:
     while True:
         print("[회원가입]")
 
-        login_id = input("로그인 ID 입력 (0: 뒤로가기) > ")
+        login_id = input("로그인 ID 입력 (0: 뒤로가기) > ").strip()
         if login_id == "0":
             return
-        if login_id.strip() == "":
+        if login_id == "":
             print("오류: 로그인 ID는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
-        if any(ch in login_id for ch in "|%&"):
+        if any(not ch.isalnum() for ch in login_id):
             print("오류: 로그인 ID에는 특수문자를 사용할 수 없습니다.")
             continue
-        if not is_valid_login_id(login_id.strip()):
+        if not is_valid_login_id(login_id):
             print("오류: 로그인 ID는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
 
         users = load_users()
-        if find_user_by_login_id(users, login_id.strip()) is not None:
+        if find_user_by_login_id(users, login_id) is not None:
             print("오류: 이미 존재하는 로그인 ID입니다.")
             continue
 
-        password = input("비밀번호 입력 (0: 뒤로가기) > ")
+        password = input("비밀번호 입력 (0: 뒤로가기) > ").strip()
         if password == "0":
             return
-        if password.strip() == "":
+        if password == "":
             print("오류: 비밀번호는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
-        if not is_valid_password(password.strip()):
+        if any(not ch.isalnum() for ch in password):
+            print("오류: 비밀번호에는 특수문자를 사용할 수 없습니다.")
+            continue
+        if not is_valid_password(password):
             print("오류: 비밀번호는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
 
-        name = input("이름 입력 (0: 뒤로가기) > ")
+        name = input("이름 입력 (0: 뒤로가기) > ").strip()
         if name == "0":
             return
-        if name.strip() == "":
+        if name == "":
             print("오류: 이름은 1~4자의 한글이어야 합니다.")
             continue
-        if not is_valid_name(name.strip()):
+        if not is_valid_name(name):
             print("오류: 이름은 1~4자의 한글이어야 합니다.")
             continue
 
         try:
-            create_user(login_id.strip(), password.strip(), name.strip())
+            create_user(login_id, password, name)
             print("회원가입이 완료되었습니다.")
             return
         except ValueError as e:
             print(f"오류: {e}")
-
 
 # =====================================
 # 로그인 부 프롬프트 함수
@@ -2198,27 +2200,33 @@ def prompt_login() -> None:
     while True:
         print("[로그인]")
 
-        login_id = input("로그인 ID를 입력 (0: 뒤로가기) > ")
+        login_id = input("로그인 ID를 입력 (0: 뒤로가기) > ").strip()
         if login_id == "0":
             return
-        if login_id.strip() == "":
+        if login_id == "":
             print("오류: 로그인 ID는 공백일 수 없습니다.")
             continue
-        if not is_valid_login_id(login_id.strip()):
+        if any(not ch.isalnum() for ch in login_id):
+            print("오류: 로그인 ID에는 특수문자를 사용할 수 없습니다.")
+            continue
+        if not is_valid_login_id(login_id):
             print("오류: 로그인 ID는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
 
-        password = input("비밀번호를 입력 (0: 뒤로가기) > ")
+        password = input("비밀번호를 입력 (0: 뒤로가기) > ").strip()
         if password == "0":
             return
-        if password.strip() == "":
+        if password == "":
             print("오류: 비밀번호는 공백일 수 없습니다.")
             continue
-        if not is_valid_password(password.strip()):
+        if any(not ch.isalnum() for ch in password):
+            print("오류: 비밀번호에는 특수문자를 사용할 수 없습니다.")
+            continue
+        if not is_valid_password(password):
             print("오류: 비밀번호는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
 
-        user = authenticate_user(login_id.strip(), password.strip())
+        user = authenticate_user(login_id, password)
         if user is None:
             print("오류: 로그인 ID 또는 비밀번호가 일치하지 않습니다.")
             continue
