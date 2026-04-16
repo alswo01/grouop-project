@@ -2179,6 +2179,9 @@ def prompt_signup() -> None:
         if login_id == "":
             print("오류: 로그인 ID는 2~10자의 영문자 또는 숫자여야 합니다.")
             continue
+        if login_id.startswith("-") and login_id[1:].isdigit():
+            print("오류: 음수는 입력할 수 없습니다.")
+            continue
         if any(not ch.isalnum() for ch in login_id):
             print("오류: 로그인 ID에는 특수문자를 사용할 수 없습니다.")
             continue
@@ -2235,6 +2238,9 @@ def prompt_login() -> None:
         if login_id == "":
             print("오류: 로그인 ID는 공백일 수 없습니다.")
             continue
+        if login_id.startswith("-") and login_id[1:].isdigit():
+            print("오류: 음수는 입력할 수 없습니다.")
+            continue
         if any(not ch.isalnum() for ch in login_id):
             print("오류: 로그인 ID에는 특수문자를 사용할 수 없습니다.")
             continue
@@ -2284,6 +2290,12 @@ def prompt_non_login_menu() -> None:
 
         choice = input("선택 > ").strip()
 
+        try:
+            menu_no = int(choice)
+        except ValueError:
+            print("오류: 숫자만 입력 가능합니다.")
+            continue
+
         if choice == "0":
             print("프로그램을 종료합니다.")
             break
@@ -2292,11 +2304,9 @@ def prompt_non_login_menu() -> None:
         elif choice == "2":
             prompt_signup()
         else:
-            if choice.isdigit():
-                print("오류: 올바른 메뉴 번호를 입력하세요.")
-            else:
-                print("오류: 숫자만 입력 가능합니다.")
+            print("오류: 올바른 메뉴 번호를 입력하세요.")
 
+            
 
 # =====================================
 # 사용자 메인 메뉴 주 프롬프트 함수
@@ -2311,22 +2321,23 @@ def user_main_menu_prompt(current_user: dict) -> None:
 
         choice = input("선택 > ").strip()
 
-        if choice == "1":
+        try:
+            menu_no = int(choice)
+        except ValueError:
+            print("오류: 숫자만 입력 가능합니다.")
+            continue
+
+        if menu_no == 1:
             product_search_main_prompt()
-        elif choice == "2":
+        elif menu_no == 2:
             cart_main_prompt(current_user)
-        elif choice == "3":
+        elif menu_no == 3:
             order_main_prompt(current_user)
-        elif choice == "4":
+        elif menu_no == 4:
             print("로그아웃이 완료되었습니다.")
             return
         else:
-            if choice.isdigit():
-                print("오류: 올바른 메뉴 번호를 입력하세요.")
-            else:
-                print("오류: 숫자만 입력 가능합니다.")
-
-
+            print("오류: 올바른 메뉴 번호를 입력하세요.")
 # =====================================
 # 관리자 주 프롬프트 함수
 # =====================================
