@@ -2290,21 +2290,19 @@ def prompt_non_login_menu() -> None:
 
         choice = input("선택 > ").strip()
 
-        try:
-            menu_no = int(choice)
-        except ValueError:
-            print("오류: 숫자만 입력 가능합니다.")
-            continue
-
-        if choice == "0":
-            print("프로그램을 종료합니다.")
-            break
-        elif choice == "1":
-            prompt_login()
-        elif choice == "2":
-            prompt_signup()
+        if choice in {"0", "1", "2"}:
+            if choice == "0":
+                print("프로그램을 종료합니다.")
+                break
+            elif choice == "1":
+                prompt_login()
+            elif choice == "2":
+                prompt_signup()
         else:
-            print("오류: 올바른 메뉴 번호를 입력하세요.")
+            if any(ch.isalpha() for ch in choice):
+                print("오류: 숫자만 입력 가능합니다.")
+            else:
+                print("오류: 올바른 메뉴 번호를 입력하세요.")
 
             
 
@@ -2321,23 +2319,21 @@ def user_main_menu_prompt(current_user: dict) -> None:
 
         choice = input("선택 > ").strip()
 
-        try:
-            menu_no = int(choice)
-        except ValueError:
-            print("오류: 숫자만 입력 가능합니다.")
-            continue
-
-        if menu_no == 1:
+        if choice == "1":
             product_search_main_prompt()
-        elif menu_no == 2:
+        elif choice == "2":
             cart_main_prompt(current_user)
-        elif menu_no == 3:
+        elif choice == "3":
             order_main_prompt(current_user)
-        elif menu_no == 4:
+        elif choice == "4":
             print("로그아웃이 완료되었습니다.")
             return
         else:
-            print("오류: 올바른 메뉴 번호를 입력하세요.")
+            if any(ch.isalpha() for ch in choice):
+                print("오류: 숫자만 입력 가능합니다.")
+            else:
+                print("오류: 올바른 메뉴 번호를 입력하세요.")
+                
 # =====================================
 # 관리자 주 프롬프트 함수
 # =====================================
