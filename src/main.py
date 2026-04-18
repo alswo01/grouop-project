@@ -632,8 +632,6 @@ def load_cart_items(
             print(
                 "[WARNING] 동일 장바구니 내 중복 상품이 발견되어 수량을 합산하였습니다."
             )
-            
-            
 
         if check_cart_stock_warnings(cart_items, products):
             print(
@@ -643,6 +641,14 @@ def load_cart_items(
         if orders is not None and has_stale_cart_items(cart_items, carts, orders):
             print("[WARNING] 주문 완료 이후에도 남아 있는 장바구니 항목이 있습니다.")
 
+    return cart_items
+
+def normalize_cart_items_file(
+    carts: list[dict],
+    products: list[dict],
+) -> list[dict]:
+    cart_items = load_cart_items(carts, products)
+    save_cart_items(cart_items)
     return cart_items
 
 
@@ -1386,6 +1392,7 @@ def get_cart_items_for_user(user_id: str) -> list[dict]:
     products = load_products()
     carts = load_carts(users)
     cart_items = load_cart_items(carts, products)
+
 
     # 장바구니 조회 시 정리된 결과를 파일에 반영
     save_cart_items(cart_items)
