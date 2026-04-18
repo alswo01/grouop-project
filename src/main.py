@@ -506,6 +506,41 @@ def parse_order_item_record(line: str) -> dict | None:
         "quantity": normalize_text(quantity),
     }
 
+def calculate_order_total_from_items(
+    order_id: str,
+    order_items: list[dict],
+) -> int:
+    total = 0
+
+    for item in order_items:
+        if item["order_id"] == order_id:
+            total += int(item["price"]) * int(item["quantity"])
+
+    return total
+
+
+def filter_valid_orders_by_order_items(
+    orders: list[dict],
+    order_items: list[dict],
+) -> list[dict]:
+    """
+    order.total_price가 해당 order_id의 order_item 합계와 일치하는
+    주문만 남긴다.
+    """
+    result = []
+
+    for order in orders:
+        expected_total = calculate_order_total_from_items(
+            order["order_id"], order_items
+        )
+        actual_total = int(order["total_price"])
+
+        if actual_total == expected_total:
+            result.append(order)
+
+    return result
+
+
 
 # =====================================
 # 파일 로드 함수
@@ -569,6 +604,7 @@ def has_stale_cart_items(cart_items, carts, orders):
             return True
 
     return False
+    
 
 
 def load_cart_items(
@@ -605,6 +641,14 @@ def load_cart_items(
         if orders is not None and has_stale_cart_items(cart_items, carts, orders):
             print("[WARNING] 주문 완료 이후에도 남아 있는 장바구니 항목이 있습니다.")
 
+    return cart_items
+
+def normalize_cart_items_file(
+    carts: list[dict],
+    products: list[dict],
+) -> list[dict]:
+    cart_items = load_cart_items(carts, products)
+    save_cart_items(cart_items)
     return cart_items
 
 
@@ -708,7 +752,12 @@ def load_orders() -> list[dict]:
         if record is not None:
             orders.append(record)
 
-    return deduplicate_orders(orders)
+    orders = deduplicate_orders(orders)
+
+    order_items = load_order_items()
+    orders = filter_valid_orders_by_order_items(orders, order_items)
+
+    return orders
 
 
 def load_order_items() -> list[dict]:
@@ -1344,6 +1393,10 @@ def get_cart_items_for_user(user_id: str) -> list[dict]:
     carts = load_carts(users)
     cart_items = load_cart_items(carts, products)
 
+
+    # 장바구니 조회 시 정리된 결과를 파일에 반영
+    save_cart_items(cart_items)
+
     cart = find_cart_by_user_id(carts, user_id)
     if cart is None:
         return []
@@ -1697,9 +1750,34 @@ def prompt_order_detail(order: dict) -> None:
         print("오류: 주문 상세 내역을 불러오지 못했습니다.")
         return
 
+    
     selected_items = get_order_items_by_order_id(order_items, order["order_id"])
 
+    # 현재 상품 정보 불일치 여부 확인
+    products = load_products()
+    info_message_needed = False
+
+    for item in selected_items:
+        product = find_product_by_product_id(products, item["product_id"])
+
+        if product is None:
+            continue
+
+        # 상품명 또는 가격이 다르면 안내 메시지 필요
+        if (
+            item["product_name"] != product["product_name"]
+            or int(item["price"]) != int(product["price"])
+        ):
+            info_message_needed = True
+            break
+
+
+
     print("[주문 상세 내역]")
+    if info_message_needed:
+        print(
+        "[INFO] 주문 상품 정보는 주문 시점의 상품명 및 가격을 기준으로 유지됩니다"
+    )
     print(f"- 주문ID: {order['order_id']}")
     print(f"- 주문상태: {order['order_status']}")
     print()
