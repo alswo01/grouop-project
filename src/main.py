@@ -1486,11 +1486,12 @@ def print_cart_view(user_id: str) -> None:
 # =====================================
 # 장바구니 부 프롬프트 함수
 # =====================================
-def prompt_add_product_to_cart(current_user: dict) -> None:
+def prompt_add_product_to_cart(current_user: dict) -> str:
     user_id = current_user["user_id"]
 
     while True:
         print("[상품 추가]")
+
         product_id = input("상품 ID 입력 > ").strip()
         quantity = input("수량 입력 > ").strip()
 
@@ -1513,31 +1514,48 @@ def prompt_add_product_to_cart(current_user: dict) -> None:
                 continue
 
             add_product_to_cart(user_id, product_id, quantity)
+
+            # 중복 상품 정리 경고를 반드시 한 번 더 보이게 함
+            users = load_users()
+            products = load_products()
+            carts = load_carts(users)
+            load_cart_items(carts, products)
+
             print("상품이 장바구니에 추가되었습니다.")
 
             rows = build_cart_view_rows(user_id)
             for row in rows:
                 if row["product_id"] == product_id and row["stock_warning"]:
-                    print(
-                        "경고: 현재 재고보다 많이 담겨 있습니다. 실제 주문 가능 여부는 주문 시 확인됩니다."
-                    )
+                    print("경고: 현재 재고보다 많이 담겨 있습니다. 실제 주문 가능 여부는 주문 시 확인됩니다.")
                     break
-            return
+
+            # 성공 시 사용자 메인 프롬프트로 복귀
+            return "user"
 
         except ValueError as e:
             print(f"오류: {e}")
-            return
+            return "cart"
         except Exception:
             print("오류: 장바구니를 저장하지 못했습니다.")
-            return
+            return "cart"
 
 
-def prompt_remove_product_from_cart(current_user: dict) -> None:
+def prompt_remove_product_from_cart(current_user: dict) -> str:
     user_id = current_user["user_id"]
 
     while True:
+        # 장바구니가 비어 있으면 자동으로 장바구니 주 프롬프트로 복귀
+        current_items = get_cart_items_for_user(user_id)
+        if not current_items:
+            print("장바구니가 비어 있습니다.")
+            return "cart"
+
         print("[상품 삭제]")
+
         product_id = input("삭제할 상품 ID 입력 > ").strip()
+
+        if product_id == "0":
+            return "cart"
 
         if not is_valid_numeric_id(product_id):
             print("오류: 장바구니에 존재하지 않는 상품입니다.")
@@ -1550,8 +1568,17 @@ def prompt_remove_product_from_cart(current_user: dict) -> None:
                 continue
 
             remove_product_from_cart(user_id, product_id)
+
+            # 중복 상품 정리 경고를 반드시 한 번 더 보이게 함
+            users = load_users()
+            products = load_products()
+            carts = load_carts(users)
+            load_cart_items(carts, products)
+
             print("상품이 장바구니에서 삭제되었습니다.")
-            return
+
+            # 성공 시 사용자 메인 프롬프트로 복귀
+            return "user"
 
         except ValueError as e:
             message = str(e)
@@ -1559,11 +1586,10 @@ def prompt_remove_product_from_cart(current_user: dict) -> None:
                 print("오류: 장바구니에 존재하지 않는 상품입니다.")
                 continue
             print(f"오류: {message}")
-            return
+            return "cart"
         except Exception:
             print("오류: 장바구니를 저장하지 못했습니다.")
-            return
-
+            continue
 
 # =====================================
 # 장바구니 주 프롬프트 함수
@@ -1588,18 +1614,26 @@ def cart_main_prompt(current_user: dict) -> None:
 
         if choice == "1":
             print_cart_view(user_id)
+
         elif choice == "2":
-            prompt_add_product_to_cart(current_user)
+            result = prompt_add_product_to_cart(current_user)
+            if result == "user":
+                return
+
         elif choice == "3":
-            prompt_remove_product_from_cart(current_user)
+            result = prompt_remove_product_from_cart(current_user)
+            if result == "user":
+                return
+            # result == "cart"면 장바구니 메뉴 계속 유지
+
         elif choice == "0":
             return
+
         else:
             if choice.isdigit():
                 print("오류: 올바른 메뉴 번호를 입력하세요.")
             else:
                 print("오류: 숫자만 입력 가능합니다.")
-
 
 # =====================================
 # 주문 관리 주 프롬프트 함수
