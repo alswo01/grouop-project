@@ -26,15 +26,7 @@ ALL_FILES = [
     CART_ITEM_FILE,
 ]
 # 카테고리 매핑
-CAT_MAP = {
-    "1": "식품",
-    "2": "생활용품",
-    "3": "주방용품",
-    "4": "전자제품",
-    "5": "문구",
-    "6": "의류",
-    "7": "기타",
-}
+CAT_MAP = {"1": "식품", "2": "생활용품", "3": "주방용품", "4": "전자제품", "5": "문구", "6": "의류", "7": "기타"}
 
 
 # =====================================
@@ -141,15 +133,13 @@ def normalize_text(value: str) -> str:
 def is_valid_numeric_id(value: str) -> bool:
     """
     숫자로만 이루어진 길이 1 이상의 ID인지 검사한다.
-    선행 0은 허용하지 않는다, 0 자체도 허용하지 않는다.
+    선행 0은 허용하지 않는다.
     """
     value = normalize_text(value)
 
     if value == "":
         return False
     if not value.isdigit():
-        return False
-    if value == "0":
         return False
     if len(value) > 1 and value.startswith("0"):
         return False
@@ -160,12 +150,12 @@ def is_valid_login_id(value: str) -> bool:
     """
     login_id:
     - 영문자와 숫자만 허용
-    - 길이 2~10
+    - 길이 1~10
     - 앞뒤 공백 제거 후 검사
     """
     value = normalize_text(value)
 
-    if not (2 <= len(value) <= 10):
+    if not (1 <= len(value) <= 10):
         return False
     if not re.fullmatch(r"[A-Za-z0-9]+", value):
         return False
@@ -176,12 +166,12 @@ def is_valid_password(value: str) -> bool:
     """
     password:
     - 영문자와 숫자만 허용
-    - 길이 2~10
+    - 길이 1~10
     - 앞뒤 공백 제거 후 검사
     """
     value = normalize_text(value)
 
-    if not (2 <= len(value) <= 10):
+    if not (1 <= len(value) <= 10):
         return False
     if not re.fullmatch(r"[A-Za-z0-9]+", value):
         return False
@@ -506,41 +496,6 @@ def parse_order_item_record(line: str) -> dict | None:
         "quantity": normalize_text(quantity),
     }
 
-def calculate_order_total_from_items(
-    order_id: str,
-    order_items: list[dict],
-) -> int:
-    total = 0
-
-    for item in order_items:
-        if item["order_id"] == order_id:
-            total += int(item["price"]) * int(item["quantity"])
-
-    return total
-
-
-def filter_valid_orders_by_order_items(
-    orders: list[dict],
-    order_items: list[dict],
-) -> list[dict]:
-    """
-    order.total_price가 해당 order_id의 order_item 합계와 일치하는
-    주문만 남긴다.
-    """
-    result = []
-
-    for order in orders:
-        expected_total = calculate_order_total_from_items(
-            order["order_id"], order_items
-        )
-        actual_total = int(order["total_price"])
-
-        if actual_total == expected_total:
-            result.append(order)
-
-    return result
-
-
 
 # =====================================
 # 파일 로드 함수
@@ -592,25 +547,9 @@ def load_carts(users: list[dict] | None = None) -> list[dict]:
     return carts
 
 
-def has_stale_cart_items(cart_items, carts, orders):
-    cart_id_to_user = {cart["cart_id"]: cart["user_id"] for cart in carts}
-
-    ordered_user_ids = {order["user_id"] for order in orders}
-
-    for item in cart_items:
-        user_id = cart_id_to_user.get(item["cart_id"])
-
-        if user_id in ordered_user_ids:
-            return True
-
-    return False
-    
-
-
 def load_cart_items(
     carts: list[dict] | None = None,
     products: list[dict] | None = None,
-    orders: list[dict] | None = None,
 ) -> list[dict]:
     cart_items = []
 
@@ -638,17 +577,6 @@ def load_cart_items(
                 "[WARNING] 장바구니에 담긴 상품 수량이 현재 재고를 초과하는 항목이 있습니다."
             )
 
-        if orders is not None and has_stale_cart_items(cart_items, carts, orders):
-            print("[WARNING] 주문 완료 이후에도 남아 있는 장바구니 항목이 있습니다.")
-
-    return cart_items
-
-def normalize_cart_items_file(
-    carts: list[dict],
-    products: list[dict],
-) -> list[dict]:
-    cart_items = load_cart_items(carts, products)
-    save_cart_items(cart_items)
     return cart_items
 
 
@@ -752,12 +680,7 @@ def load_orders() -> list[dict]:
         if record is not None:
             orders.append(record)
 
-    orders = deduplicate_orders(orders)
-
-    order_items = load_order_items()
-    orders = filter_valid_orders_by_order_items(orders, order_items)
-
-    return orders
+    return deduplicate_orders(orders)
 
 
 def load_order_items() -> list[dict]:
@@ -1393,10 +1316,6 @@ def get_cart_items_for_user(user_id: str) -> list[dict]:
     carts = load_carts(users)
     cart_items = load_cart_items(carts, products)
 
-
-    # 장바구니 조회 시 정리된 결과를 파일에 반영
-    save_cart_items(cart_items)
-
     cart = find_cart_by_user_id(carts, user_id)
     if cart is None:
         return []
@@ -1486,12 +1405,11 @@ def print_cart_view(user_id: str) -> None:
 # =====================================
 # 장바구니 부 프롬프트 함수
 # =====================================
-def prompt_add_product_to_cart(current_user: dict) -> str:
+def prompt_add_product_to_cart(current_user: dict) -> None:
     user_id = current_user["user_id"]
 
     while True:
         print("[상품 추가]")
-
         product_id = input("상품 ID 입력 > ").strip()
         quantity = input("수량 입력 > ").strip()
 
@@ -1514,48 +1432,31 @@ def prompt_add_product_to_cart(current_user: dict) -> str:
                 continue
 
             add_product_to_cart(user_id, product_id, quantity)
-
-            # 중복 상품 정리 경고를 반드시 한 번 더 보이게 함
-            users = load_users()
-            products = load_products()
-            carts = load_carts(users)
-            load_cart_items(carts, products)
-
             print("상품이 장바구니에 추가되었습니다.")
 
             rows = build_cart_view_rows(user_id)
             for row in rows:
                 if row["product_id"] == product_id and row["stock_warning"]:
-                    print("경고: 현재 재고보다 많이 담겨 있습니다. 실제 주문 가능 여부는 주문 시 확인됩니다.")
+                    print(
+                        "경고: 현재 재고보다 많이 담겨 있습니다. 실제 주문 가능 여부는 주문 시 확인됩니다."
+                    )
                     break
-
-            # 성공 시 사용자 메인 프롬프트로 복귀
-            return "user"
+            return
 
         except ValueError as e:
             print(f"오류: {e}")
-            return "cart"
+            return
         except Exception:
             print("오류: 장바구니를 저장하지 못했습니다.")
-            return "cart"
+            return
 
 
-def prompt_remove_product_from_cart(current_user: dict) -> str:
+def prompt_remove_product_from_cart(current_user: dict) -> None:
     user_id = current_user["user_id"]
 
     while True:
-        # 장바구니가 비어 있으면 자동으로 장바구니 주 프롬프트로 복귀
-        current_items = get_cart_items_for_user(user_id)
-        if not current_items:
-            print("장바구니가 비어 있습니다.")
-            return "cart"
-
         print("[상품 삭제]")
-
         product_id = input("삭제할 상품 ID 입력 > ").strip()
-
-        if product_id == "0":
-            return "cart"
 
         if not is_valid_numeric_id(product_id):
             print("오류: 장바구니에 존재하지 않는 상품입니다.")
@@ -1568,17 +1469,8 @@ def prompt_remove_product_from_cart(current_user: dict) -> str:
                 continue
 
             remove_product_from_cart(user_id, product_id)
-
-            # 중복 상품 정리 경고를 반드시 한 번 더 보이게 함
-            users = load_users()
-            products = load_products()
-            carts = load_carts(users)
-            load_cart_items(carts, products)
-
             print("상품이 장바구니에서 삭제되었습니다.")
-
-            # 성공 시 사용자 메인 프롬프트로 복귀
-            return "user"
+            return
 
         except ValueError as e:
             message = str(e)
@@ -1586,10 +1478,11 @@ def prompt_remove_product_from_cart(current_user: dict) -> str:
                 print("오류: 장바구니에 존재하지 않는 상품입니다.")
                 continue
             print(f"오류: {message}")
-            return "cart"
+            return
         except Exception:
             print("오류: 장바구니를 저장하지 못했습니다.")
-            continue
+            return
+
 
 # =====================================
 # 장바구니 주 프롬프트 함수
@@ -1614,59 +1507,22 @@ def cart_main_prompt(current_user: dict) -> None:
 
         if choice == "1":
             print_cart_view(user_id)
-
         elif choice == "2":
-            result = prompt_add_product_to_cart(current_user)
-            if result == "user":
-                return
-
+            prompt_add_product_to_cart(current_user)
         elif choice == "3":
-            result = prompt_remove_product_from_cart(current_user)
-            if result == "user":
-                return
-            # result == "cart"면 장바구니 메뉴 계속 유지
-
+            prompt_remove_product_from_cart(current_user)
         elif choice == "0":
             return
-
         else:
             if choice.isdigit():
                 print("오류: 올바른 메뉴 번호를 입력하세요.")
             else:
                 print("오류: 숫자만 입력 가능합니다.")
 
+
 # =====================================
 # 주문 관리 주 프롬프트 함수
 # =====================================
-
-
-def order_main_prompt(current_user: dict) -> None:
-    while True:
-        print("[주문 관리]")
-        print("1. 주문하기 (장바구니 내역)")
-        print("2. 주문 내역 조회")
-        print("3. 주문 취소 요청")
-        print("0. 이전 메뉴")
-
-        choice = input("선택 > ").strip()
-
-        if choice == "1":
-            prompt_order_confirm(current_user)
-        elif choice == "2":
-            prompt_order_history(current_user)
-        elif choice == "3":
-            prompt_order_cancel_request(current_user)
-        elif choice == "0":
-            return
-        else:
-            print("오류 : 올바른 메뉴 번호를 입력하세요.")
-
-
-# =====================================
-# 주문 확정 부 프롬프트 함수
-# =====================================
-
-
 def prompt_order_confirm(current_user: dict) -> None:
     user_id = current_user["user_id"]
 
@@ -1716,11 +1572,6 @@ def prompt_order_confirm(current_user: dict) -> None:
         print("오류: 주문을 처리하지 못했습니다.")
 
 
-# =====================================
-# 주문 내역 조회 부 프롬프트 함수
-# =====================================
-
-
 def prompt_order_history(current_user: dict) -> None:
     user_id = normalize_text(current_user["user_id"])
 
@@ -1738,7 +1589,7 @@ def prompt_order_history(current_user: dict) -> None:
         print()
 
         if not my_orders:
-            print("오류: 조회할 주문 내역이 없습니다.")
+            print("조회할 주문 내역이 없습니다.")
             return
 
         for idx, order in enumerate(my_orders, start=1):
@@ -1754,27 +1605,22 @@ def prompt_order_history(current_user: dict) -> None:
             print(f"상태: {order['order_status']}")
             print()
 
-        choice = input("상세 조회할 주문 ID 입력 (0: 이전 메뉴) > ").strip()
+        choice = input("상세 조회할 주문 번호(순번) 입력 (0: 이전 메뉴) > ").strip()
 
         if choice == "0":
             return
 
-        selected_order = None
-        for order in my_orders:
-            if order["order_id"] == choice:
-                selected_order = order
-                break
-
-        if selected_order is None:
+        if not choice.isdigit():
             print("오류 : 올바른 번호를 입력하세요.")
             continue
 
+        selected_index = int(choice)
+        if selected_index < 1 or selected_index > len(my_orders):
+            print("오류 : 올바른 번호를 입력하세요.")
+            continue
+
+        selected_order = my_orders[selected_index - 1]
         prompt_order_detail(selected_order)
-
-
-# =====================================
-# 주문 상세 정보 출력 부 프롬프트 함수
-# =====================================
 
 
 def prompt_order_detail(order: dict) -> None:
@@ -1784,34 +1630,9 @@ def prompt_order_detail(order: dict) -> None:
         print("오류: 주문 상세 내역을 불러오지 못했습니다.")
         return
 
-    
     selected_items = get_order_items_by_order_id(order_items, order["order_id"])
 
-    # 현재 상품 정보 불일치 여부 확인
-    products = load_products()
-    info_message_needed = False
-
-    for item in selected_items:
-        product = find_product_by_product_id(products, item["product_id"])
-
-        if product is None:
-            continue
-
-        # 상품명 또는 가격이 다르면 안내 메시지 필요
-        if (
-            item["product_name"] != product["product_name"]
-            or int(item["price"]) != int(product["price"])
-        ):
-            info_message_needed = True
-            break
-
-
-
     print("[주문 상세 내역]")
-    if info_message_needed:
-        print(
-        "[INFO] 주문 상품 정보는 주문 시점의 상품명 및 가격을 기준으로 유지됩니다"
-    )
     print(f"- 주문ID: {order['order_id']}")
     print(f"- 주문상태: {order['order_status']}")
     print()
@@ -1834,11 +1655,6 @@ def prompt_order_detail(order: dict) -> None:
         if move_back == "":
             return
         print("오류 : 엔터를 입력하세요.")
-
-
-# =====================================
-# 주문 취소 요청 부 프롬프트 함수
-# =====================================
 
 
 def prompt_order_cancel_request(current_user: dict) -> None:
@@ -1893,6 +1709,28 @@ def prompt_order_cancel_request(current_user: dict) -> None:
         except Exception:
             print("오류 : 주문 취소 요청을 처리하지 못했습니다.")
             return
+
+
+def order_main_prompt(current_user: dict) -> None:
+    while True:
+        print("[주문 관리]")
+        print("1. 주문하기 (장바구니 내역)")
+        print("2. 주문 내역 조회")
+        print("3. 주문 취소 요청")
+        print("0. 이전 메뉴")
+
+        choice = input("선택 > ").strip()
+
+        if choice == "1":
+            prompt_order_confirm(current_user)
+        elif choice == "2":
+            prompt_order_history(current_user)
+        elif choice == "3":
+            prompt_order_cancel_request(current_user)
+        elif choice == "0":
+            return
+        else:
+            print("오류 : 올바른 메뉴 번호를 입력하세요.")
 
 
 # =====================================
@@ -2084,253 +1922,52 @@ def update_order_status_by_admin(order_id: str, action: str) -> dict:
 
 
 # =====================================
-# 상품 조회 / 검색 (6.3, 7.3, 7.4, 7.5)
-# =====================================
-def parse_category_record(line: str) -> dict | None:
-    parts = split_record(line, 2)
-    if parts is None:
-        return None
-
-    category_id, category_name = parts
-
-    if not is_valid_category_id(category_id):
-        return None
-    if not is_valid_category_name(category_name):
-        return None
-
-    return {
-        "category_id": normalize_text(category_id),
-        "category_name": normalize_text(category_name),
-    }
-
-
-def load_categories() -> list[dict]:
-    categories = []
-
-    for line in read_lines(CATEGORY_FILE):
-        if normalize_text(line) == "":
-            continue
-
-        record = parse_category_record(line)
-        if record is not None:
-            categories.append(record)
-
-    return deduplicate_categories(categories)
-
-
-def deduplicate_categories(categories: list[dict]) -> list[dict]:
-    result = []
-    seen_category_ids = set()
-
-    for category in categories:
-        category_id = category["category_id"]
-        if category_id in seen_category_ids:
-            continue
-
-        seen_category_ids.add(category_id)
-        result.append(category)
-
-    return result
-
-
-def build_category_name_map(categories: list[dict]) -> dict[str, str]:
-    return {
-        category["category_id"]: category["category_name"] for category in categories
-    }
-
-
-def sort_products_by_product_id(products: list[dict]) -> list[dict]:
-    return sorted(products, key=lambda product: int(product["product_id"]))
-
-
-def print_product_table(
-    products: list[dict], category_name_map: dict[str, str]
-) -> None:
-    print("상품 ID | 상품 명 | 카테고리 | 가격 | 재고")
-    for product in products:
-        category_name = category_name_map.get(product["category_id"], "알 수 없음")
-        print(
-            f"{product['product_id']} | {product['product_name']} | "
-            f"{category_name} | {product['price']}원 | {product['stock']}개"
-        )
-
-
-def show_all_products_prompt() -> None:
-    print("[ 전체 상품 조회 ]")
-
-    products = sort_products_by_product_id(load_products())
-    if not products:
-        print("오류 : 등록된 상품이 없습니다.")
-        return
-
-    categories = load_categories()
-    category_name_map = build_category_name_map(categories)
-    print_product_table(products, category_name_map)
-
-
-def print_category_search_prompt() -> None:
-    print("[ 카테고리 별 조회 ]")
-    print("1 : 식품")
-    print("2 : 생활용품")
-    print("3 : 주방용품")
-    print("4 : 전자제품")
-    print("5 : 문구")
-    print("6 : 의류")
-    print("7 : 기타")
-    print("")
-
-
-def show_products_by_category_prompt() -> None:
-    products = sort_products_by_product_id(load_products())
-    if not products:
-        print("등록된 상품이 없습니다.")
-        return
-
-    categories = load_categories()
-    category_name_map = build_category_name_map(categories)
-
-    while True:
-        print_category_search_prompt()
-        category_input = input("카테고리 ID 입력 (0 : 뒤로가기)> ").strip()
-
-        if category_input == "0":
-            return
-        if category_input not in {"1", "2", "3", "4", "5", "6", "7"}:
-            print("오류: 존재하는 카테고리 ID를 입력하세요.")
-            continue
-
-        filtered_products = [
-            product for product in products if product["category_id"] == category_input
-        ]
-
-        if not filtered_products:
-            print("해당 카테고리에 등록된 상품이 없습니다.")
-            return
-
-        print_product_table(filtered_products, category_name_map)
-        return
-
-
-def normalize_search_key(value: str) -> str:
-    return re.sub(r"\s+", "", value).lower()
-
-
-def show_products_by_name_prompt() -> None:
-    categories = load_categories()
-    category_name_map = build_category_name_map(categories)
-    products = sort_products_by_product_id(load_products())
-
-    print("[상품명 검색]")
-    while True:
-        keyword_input = input("검색어 입력 > ")
-        keyword = keyword_input.strip()
-
-        if keyword == "":
-            print("오류: 검색어를 1자 이상 입력하세요.")
-            continue
-
-        keyword_tokens = [
-            normalize_search_key(token) for token in keyword.split() if token
-        ]
-
-        filtered_products = []
-        for product in products:
-            product_name_key = normalize_search_key(product["product_name"])
-
-            if all(token in product_name_key for token in keyword_tokens):
-                filtered_products.append(product)
-
-        if not filtered_products:
-            print("검색 결과가 없습니다.")
-            print(f"입력한 검색어: {keyword}")
-            return
-
-        print_product_table(filtered_products, category_name_map)
-        return
-
-
-def run_product_search_menu_prompt() -> None:
-    while True:
-        print("[상품 조회 / 검색]")
-        print("1. 전체 상품 조회")
-        print("2. 카테고리별 조회")
-        print("3. 상품명 검색")
-        print("0. 이전 메뉴")
-        selected_menu = input("선택 > ").strip()
-
-        if selected_menu == "1":
-            show_all_products_prompt()
-        elif selected_menu == "2":
-            show_products_by_category_prompt()
-        elif selected_menu == "3":
-            show_products_by_name_prompt()
-        elif selected_menu == "0":
-            return
-        else:
-            print("오류: 올바른 메뉴 번호를 입력하세요.")
-
-
-def product_search_main_prompt() -> None:
-    """
-    기존 사용자 메인 메뉴에서 연결할 수 있는 진입 함수.
-    (예: user_main_menu_prompt의 1번 메뉴에서 호출)
-    """
-    run_product_search_menu_prompt()
-
-
-# =====================================
 # 회원가입 부 프롬프트 함수
 # =====================================
 def prompt_signup() -> None:
     while True:
         print("[회원가입]")
 
-        login_id = input("로그인 ID 입력 (0: 뒤로가기) > ").strip()
+        login_id = input("로그인 ID 입력 (0: 뒤로가기) > ")
         if login_id == "0":
             return
-        if login_id == "":
-            print("오류: 로그인 ID는 2~10자의 영문자 또는 숫자여야 합니다.")
+        if login_id.strip() == "":
+            print("오류: 로그인 ID는 1~10자의 영문자 또는 숫자여야 합니다.")
             continue
-        if login_id.startswith("-") and login_id[1:].isdigit():
-            print("오류: 음수는 입력할 수 없습니다.")
-            continue
-        if any(not ch.isalnum() for ch in login_id):
+        if any(ch in login_id for ch in "|%&"):
             print("오류: 로그인 ID에는 특수문자를 사용할 수 없습니다.")
             continue
-        if not is_valid_login_id(login_id):
-            print("오류: 로그인 ID는 2~10자의 영문자 또는 숫자여야 합니다.")
+        if not is_valid_login_id(login_id.strip()):
+            print("오류: 로그인 ID는 1~10자의 영문자 또는 숫자여야 합니다.")
             continue
 
         users = load_users()
-        if find_user_by_login_id(users, login_id) is not None:
+        if find_user_by_login_id(users, login_id.strip()) is not None:
             print("오류: 이미 존재하는 로그인 ID입니다.")
             continue
 
-        password = input("비밀번호 입력 (0: 뒤로가기) > ").strip()
+        password = input("비밀번호 입력 (0: 뒤로가기) > ")
         if password == "0":
             return
-        if password == "":
-            print("오류: 비밀번호는 2~10자의 영문자 또는 숫자여야 합니다.")
+        if password.strip() == "":
+            print("오류: 비밀번호는 1~10자의 영문자 또는 숫자여야 합니다.")
             continue
-        if any(not ch.isalnum() for ch in password):
-            print("오류: 비밀번호에는 특수문자를 사용할 수 없습니다.")
-            continue
-        if not is_valid_password(password):
-            print("오류: 비밀번호는 2~10자의 영문자 또는 숫자여야 합니다.")
+        if not is_valid_password(password.strip()):
+            print("오류: 비밀번호는 1~10자의 영문자 또는 숫자여야 합니다.")
             continue
 
-        name = input("이름 입력 (0: 뒤로가기) > ").strip()
+        name = input("이름 입력 (0: 뒤로가기) > ")
         if name == "0":
             return
-        if name == "":
+        if name.strip() == "":
             print("오류: 이름은 1~4자의 한글이어야 합니다.")
             continue
-        if not is_valid_name(name):
+        if not is_valid_name(name.strip()):
             print("오류: 이름은 1~4자의 한글이어야 합니다.")
             continue
 
         try:
-            create_user(login_id, password, name)
+            create_user(login_id.strip(), password.strip(), name.strip())
             print("회원가입이 완료되었습니다.")
             return
         except ValueError as e:
@@ -2344,36 +1981,27 @@ def prompt_login() -> None:
     while True:
         print("[로그인]")
 
-        login_id = input("로그인 ID를 입력 (0: 뒤로가기) > ").strip()
+        login_id = input("로그인 ID를 입력 (0: 뒤로가기) > ")
         if login_id == "0":
             return
-        if login_id == "":
+        if login_id.strip() == "":
             print("오류: 로그인 ID는 공백일 수 없습니다.")
             continue
-        if login_id.startswith("-") and login_id[1:].isdigit():
-            print("오류: 음수는 입력할 수 없습니다.")
-            continue
-        if any(not ch.isalnum() for ch in login_id):
-            print("오류: 로그인 ID에는 특수문자를 사용할 수 없습니다.")
-            continue
-        if not is_valid_login_id(login_id):
-            print("오류: 로그인 ID는 2~10자의 영문자 또는 숫자여야 합니다.")
+        if not is_valid_login_id(login_id.strip()):
+            print("오류: 로그인 ID 형식이 올바르지 않습니다.")
             continue
 
-        password = input("비밀번호를 입력 (0: 뒤로가기) > ").strip()
+        password = input("비밀번호를 입력 (0: 뒤로가기) > ")
         if password == "0":
             return
-        if password == "":
+        if password.strip() == "":
             print("오류: 비밀번호는 공백일 수 없습니다.")
             continue
-        if any(not ch.isalnum() for ch in password):
-            print("오류: 비밀번호에는 특수문자를 사용할 수 없습니다.")
-            continue
-        if not is_valid_password(password):
-            print("오류: 비밀번호는 2~10자의 영문자 또는 숫자여야 합니다.")
+        if not is_valid_password(password.strip()):
+            print("오류: 비밀번호 형식이 올바르지 않습니다.")
             continue
 
-        user = authenticate_user(login_id, password)
+        user = authenticate_user(login_id.strip(), password.strip())
         if user is None:
             print("오류: 로그인 ID 또는 비밀번호가 일치하지 않습니다.")
             continue
@@ -2403,21 +2031,19 @@ def prompt_non_login_menu() -> None:
 
         choice = input("선택 > ").strip()
 
-        if choice in {"0", "1", "2"}:
-            if choice == "0":
-                print("프로그램을 종료합니다.")
-                break
-            elif choice == "1":
-                prompt_login()
-            elif choice == "2":
-                prompt_signup()
+        if choice == "0":
+            print("프로그램을 종료합니다.")
+            break
+        elif choice == "1":
+            prompt_login()
+        elif choice == "2":
+            prompt_signup()
         else:
-            if any(ch.isalpha() for ch in choice):
-                print("오류: 숫자만 입력 가능합니다.")
-            else:
+            if choice.isdigit():
                 print("오류: 올바른 메뉴 번호를 입력하세요.")
+            else:
+                print("오류: 숫자만 입력 가능합니다.")
 
-            
 
 # =====================================
 # 사용자 메인 메뉴 주 프롬프트 함수
@@ -2433,7 +2059,7 @@ def user_main_menu_prompt(current_user: dict) -> None:
         choice = input("선택 > ").strip()
 
         if choice == "1":
-            product_search_main_prompt()
+            print("상품 조회 / 검색 기능은 아직 구현 전입니다.")
         elif choice == "2":
             cart_main_prompt(current_user)
         elif choice == "3":
@@ -2442,11 +2068,12 @@ def user_main_menu_prompt(current_user: dict) -> None:
             print("로그아웃이 완료되었습니다.")
             return
         else:
-            if any(ch.isalpha() for ch in choice):
-                print("오류: 숫자만 입력 가능합니다.")
-            else:
+            if choice.isdigit():
                 print("오류: 올바른 메뉴 번호를 입력하세요.")
-                
+            else:
+                print("오류: 숫자만 입력 가능합니다.")
+
+
 # =====================================
 # 관리자 주 프롬프트 함수
 # =====================================
@@ -2467,7 +2094,6 @@ def admin_main_prompt(current_user: dict):
         else:
             print("오류 : 올바른 메뉴 번호를 입력하세요.")
 
-
 # -------------------------------------
 # 2. 상품 관리 (6.7)
 # -------------------------------------
@@ -2479,17 +2105,14 @@ def admin_product_menu():
         for p in sorted(products, key=lambda x: int(x['product_id'])):
             cat_name = CAT_MAP.get(p['category_id'], "기타")
             print(
-                f"{p['product_id']:<10} | {p['product_name']:<13} | {cat_name:<8} | {p['price'] + '원':<11} | {p['stock']}개"
-            )
+                f"{p['product_id']:<10} | {p['product_name']:<13} | {cat_name:<8} | {p['price'] + '원':<11} | {p['stock']}개")
 
-        print("1. 등록\n2. 수정\n0. 이전 메뉴")
+        print("\n1. 등록\n2. 수정\n0. 이전 메뉴")
         choice = input("선택 > ").strip()
 
         if choice == "1":
-            if admin_add_product_flow():
-                return  # 성공 시 주 메뉴(6.6)로
+            if admin_add_product_flow(): return  # 성공 시 주 메뉴(6.6)로
         elif choice == "2":
-            print("\n[상품 수정]")
             if admin_product_edit_flow(): return  # 성공 시 주 메뉴(6.6)로
         elif choice == "0":
             return
@@ -2543,8 +2166,8 @@ def admin_add_product_flow():
             break
 
     # [7.15] 가격 등록
-    print(f"\n[가격 등록]")
     while True:
+        print(f"\n[가격 등록]")
         price = input("판매할 상품의 가격을 입력하세요 : ").strip()
         if not is_valid_price(price):
             print("오류 : 판매할 상품의 가격은 1~1,000,000 사이의 정수값만 입력하세요.")
@@ -2552,8 +2175,8 @@ def admin_add_product_flow():
         break
 
     # [7.16] 재고 등록
-    print(f"\n[재고 등록]")
     while True:
+        print(f"\n[재고 등록]")
         stock = input("판매할 상품의 재고를 입력하세요 : ").strip()
         if not is_valid_stock(stock):
             print("오류 : 판매할 상품의 재고는 0 이상의 정수값입니다.")
@@ -2566,15 +2189,14 @@ def admin_add_product_flow():
     print(f"상품명: {name}, 카테고리: {cat_name}, 가격: {price}원, 재고 {stock}개가 등록 되었습니다.\n")
     return True  # 등록 완료 신호 (주 메뉴로 한 번에 튕겨나가게 함)
 
-
-def is_valid_category_id(v):
-    return v in CAT_MAP
+def is_valid_category_id(v): return v in CAT_MAP
 
 
 def admin_product_edit_flow():
     """7.17~7.22 상품 정보 수정 흐름 (기획서 출력 사양 완벽 준수)"""
 
     # [7.17] 수정할 상품 선택 화면 출력
+    print("\n[상품 수정]")
     while True:
         products = load_products()
 
@@ -2609,16 +2231,14 @@ def admin_product_edit_flow():
 
         if product:
             break
+
     # [7.18] 수정할 데이터 선택 루프
     while True:
         print(f"\n[상품 데이터 수정]")
-        cat_name = CAT_MAP.get(product["category_id"], "기타")
+        cat_name = CAT_MAP.get(product['category_id'], "기타")
+        print(f"{'상품 ID':<10} | {'상품명':<13} | {'카테고리':<8} | {'가격':<11} | {'재고'}")
         print(
-            f"{'상품 ID':<10} | {'상품명':<13} | {'카테고리':<8} | {'가격':<11} | {'재고'}"
-        )
-        print(
-            f"{product['product_id']:<10} | {product['product_name']:<13} | {cat_name:<8} | {product['price'] + '원':<11} | {product['stock']}개"
-        )
+            f"{product['product_id']:<10} | {product['product_name']:<13} | {cat_name:<8} | {product['price'] + '원':<11} | {product['stock']}개")
 
         print("1. 상품명\n2. 카테고리\n3. 가격\n4. 재고")
         field_choice = input("수정할 정보의 번호를 입력하세요(0: 이전) : ").strip()
@@ -2632,17 +2252,12 @@ def admin_product_edit_flow():
             while True:
                 new_val = input("판매할 상품의 이름을 등록하세요 : ").strip()
                 if is_valid_product_name(new_val):
-                    if (find_product_by_name(load_products(), new_val)):
+                    if find_product_by_name(load_products(), new_val) and new_val != product['product_name']:
                         print("오류 : 판매중인 상품명과 동일합니다.")
                         continue
                     else:
                         update_product(p_id, new_product_name=new_val)
-                        print_edit_success_msg(
-                            new_val,
-                            product["category_id"],
-                            product["price"],
-                            product["stock"],
-                        )
+                        print_edit_success_msg(new_val, product['category_id'], product['price'], product['stock'])
                         return True
                 else:
                     print("오류 : 판매 할 수 없는 이름입니다.")
@@ -2668,12 +2283,7 @@ def admin_product_edit_flow():
                     break
                 if is_valid_cat:
                     update_product(p_id, new_category_id=new_val)
-                    print_edit_success_msg(
-                        product["product_name"],
-                        new_val,
-                        product["price"],
-                        product["stock"],
-                    )
+                    print_edit_success_msg(product['product_name'], new_val, product['price'], product['stock'])
                     return True
 
         elif field_choice == "3":  # 가격 수정
@@ -2682,17 +2292,10 @@ def admin_product_edit_flow():
                 new_val = input("판매할 상품의 가격을 입력하세요 : ").strip()
                 if is_valid_price(new_val):
                     update_product(p_id, new_price=new_val)
-                    print_edit_success_msg(
-                        product["product_name"],
-                        product["category_id"],
-                        new_val,
-                        product["stock"],
-                    )
+                    print_edit_success_msg(product['product_name'], product['category_id'], new_val, product['stock'])
                     return True
                 else:
-                    print(
-                        "오류 : 판매할 상품의 가격은 1~1,000,000 사이의 정수값만 입력하세요."
-                    )
+                    print("오류 : 판매할 상품의 가격은 1~1,000,000 사이의 정수값만 입력하세요.")
                     continue
 
         elif field_choice == "4":  # 재고 수정
@@ -2701,12 +2304,7 @@ def admin_product_edit_flow():
                 new_val = input("판매할 상품의 재고를 입력하세요 : ").strip()
                 if is_valid_stock(new_val):
                     update_product(p_id, new_stock=new_val)
-                    print_edit_success_msg(
-                        product["product_name"],
-                        product["category_id"],
-                        product["price"],
-                        new_val,
-                    )
+                    print_edit_success_msg(product['product_name'], product['category_id'], product['price'], new_val)
                     return True
                 else:
                     print("오류 : 판매할 상품의 재고는 0 이상의 정수값입니다.")
@@ -2727,21 +2325,13 @@ def admin_order_menu():
     while True:
         orders = load_orders()
         print("\n[관리자 주문 관리]")
-        print(
-            f"{'주문 ID':<10} | {'주문자':<10} | {'주문 금액':<10} | {'주문 상태':<12} | {'비고'}"
-        )
+        print(f"{'주문 ID':<10} | {'주문자':<10} | {'주문 금액':<10} | {'주문 상태':<12} | {'비고'}")
 
         # 주문 목록 출력
-        for o in sorted(orders, key=lambda x: int(x["order_id"])):
-            note = (
-                "상품 재고 부족"
-                if o["order_status"] == "PENDING"
-                and is_order_stock_insufficient(o["order_id"])
-                else "없음"
-            )
+        for o in sorted(orders, key=lambda x: int(x['order_id'])):
+            note = "상품 재고 부족" if o['order_status'] == "PENDING" and is_order_stock_insufficient(o['order_id']) else "없음"
             print(
-                f"{o['order_id']:<10} | {o['user_id']:<10} | {o['total_price']:<10} | {o['order_status']:<12} | {note}"
-            )
+                f"{o['order_id']:<10} | {o['user_id']:<10} | {o['total_price']:<10} | {o['order_status']:<12} | {note}")
 
         print("0. 이전 메뉴")
 
@@ -2773,45 +2363,36 @@ def admin_order_status_change_flow(order_id):
     while True:
         orders = load_orders()
         prods = load_products()
-        order = next((o for o in orders if o["order_id"] == order_id), None)
+        order = next((o for o in orders if o['order_id'] == order_id), None)
 
         if not order:
             print("오류 : 등록되지 않은 주문 ID입니다.")
             return False
 
-        items = [i for i in load_order_items() if i["order_id"] == order_id]
+        items = [i for i in load_order_items() if i['order_id'] == order_id]
 
         # 기획서 5.3.3: 주문 당시 정보와 현재 정보 비교
         info_needed = False
         for i in items:
-            p = find_product_by_product_id(prods, i["product_id"])
-            if p and (
-                p["product_name"] != i["product_name"] or p["price"] != i["price"]
-            ):
+            p = find_product_by_product_id(prods, i['product_id'])
+            if p and (p['product_name'] != i['product_name'] or p['price'] != i['price']):
                 info_needed = True
                 break
 
         # 1. 주문 상세 정보 출력
         is_insufficient = is_order_stock_insufficient(order_id)
-        order_note = (
-            "상품 재고 부족"
-            if order["order_status"] == "PENDING" and is_insufficient
-            else "없음"
-        )
+        order_note = "상품 재고 부족" if order['order_status'] == "PENDING" and is_insufficient else "없음"
 
         print("\n[주문 상태 변경]")
+        print(f"{'주문 ID':<8} | {'주문자':<8} | {'주문 금액':<10} | {'주문 상태':<12} | {'비고':<15} | {'주문 일자'}")
         print(
-            f"{'주문 ID':<8} | {'주문자':<8} | {'주문 금액':<10} | {'주문 상태':<12} | {'비고':<15} | {'주문 일자'}"
-        )
-        print(
-            f"{order['order_id']:<8} | {order['user_id']:<8} | {order['total_price']:<10} | {order['order_status']:<12} | {order_note:<15} | {order['order_time']}"
-        )
+            f"{order['order_id']:<8} | {order['user_id']:<8} | {order['total_price']:<10} | {order['order_status']:<12} | {order_note:<15} | {order['order_time']}")
 
         # 2. 주문 상품 목록 출력
         print("\n주문 상품 목록")
         print(f"{'상품명':<15} | {'주문 수량':<8} | {'가격':<10} | {'비고'}")
         for i in items:
-            p_data = find_product_by_product_id(prods, i["product_id"])
+            p_data = find_product_by_product_id(prods, i['product_id'])
             # 개별 상품 단위 재고 부족 판단 (주문이 PENDING 상태일 때만 판단)
             p_note = "상품 부족" if order['order_status'] == "PENDING" and (
                         not p_data or int(p_data['stock']) < int(i['quantity'])) else "없음"
@@ -2828,7 +2409,7 @@ def admin_order_status_change_flow(order_id):
 
         # 4. 상태 변경 처리
         if action == "1":
-            if order["order_status"] != "PENDING":
+            if order['order_status'] != "PENDING":
                 print("처리가 완료된 주문입니다.")
             elif is_insufficient:
                 print("수량 부족으로 수락 불가능한 주문입니다.")
@@ -2838,7 +2419,7 @@ def admin_order_status_change_flow(order_id):
             return True
 
         elif action == "2":
-            if order["order_status"] != "PENDING":
+            if order['order_status'] != "PENDING":
                 print("처리가 완료된 주문입니다.")
             elif not is_insufficient:
                 print("거절 가능한 주문이 아닙니다.")
@@ -2848,7 +2429,7 @@ def admin_order_status_change_flow(order_id):
             return True
 
         elif action == "3":
-            if order["order_status"] != "CANCEL_REQUESTED":
+            if order['order_status'] != "CANCEL_REQUESTED":
                 print("취소 가능한 주문이 아닙니다.")
             else:
                 update_order_status_by_admin(order_id, "cancel")
@@ -2858,8 +2439,6 @@ def admin_order_status_change_flow(order_id):
         else:
             print("오류 : 올바른 메뉴 번호를 입력하세요.")
             continue
-
-
 # =====================================
 # 메인 실행 함수
 # =====================================
