@@ -2679,7 +2679,7 @@ def admin_product_edit_flow():
                 new_val = input("판매할 상품의 이름을 등록하세요 : ").strip()
                 if is_valid_product_name(new_val):
                     if (find_product_by_name(load_products(), new_val)):
-                        print("오류 : 판매중인 상품명과 동일합니다.")
+                        print("판매중인 상품명과 동일합니다.")
                         continue
                     else:
                         update_product(p_id, new_product_name=new_val)
@@ -2691,7 +2691,7 @@ def admin_product_edit_flow():
                         )
                         return True
                 else:
-                    print("오류 : 판매 할 수 없는 이름입니다.")
+                    print("판매 할 수 없는 이름입니다.")
                     continue
 
 
