@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 
@@ -136,6 +137,21 @@ def print_initialization_result() -> None:
 def normalize_text(value: str) -> str:
     """문자열 앞뒤 공백을 제거한다."""
     return value.strip()
+
+
+def get_display_width(value: str) -> int:
+    width = 0
+    for ch in value:
+        if unicodedata.east_asian_width(ch) in {"F", "W"}:
+            width += 2
+        else:
+            width += 1
+    return width
+
+
+def pad_display_text(value: str, width: int) -> str:
+    padding = max(0, width - get_display_width(value))
+    return value + (" " * padding)
 
 
 def is_valid_numeric_id(value: str) -> bool:
@@ -2146,12 +2162,42 @@ def sort_products_by_product_id(products: list[dict]) -> list[dict]:
 def print_product_table(
     products: list[dict], category_name_map: dict[str, str]
 ) -> None:
-    print("상품 ID | 상품 명 | 카테고리 | 가격 | 재고")
+    headers = ["상품 ID", "상품 명", "카테고리", "가격", "재고"]
+    rows = []
+
     for product in products:
         category_name = category_name_map.get(product["category_id"], "알 수 없음")
+        rows.append(
+            [
+                product["product_id"],
+                product["product_name"],
+                category_name,
+                f"{product['price']}원",
+                f"{product['stock']}개",
+            ]
+        )
+
+    column_widths = []
+    for col_idx, header in enumerate(headers):
+        max_width = get_display_width(header)
+        for row in rows:
+            max_width = max(max_width, get_display_width(row[col_idx]))
+        column_widths.append(max_width)
+
+    header_line = " | ".join(
+        pad_display_text(header, column_widths[idx])
+        for idx, header in enumerate(headers)
+    )
+    separator_line = "-+-".join("-" * width for width in column_widths)
+
+    print(header_line)
+    print(separator_line)
+    for row in rows:
         print(
-            f"{product['product_id']} | {product['product_name']} | "
-            f"{category_name} | {product['price']}원 | {product['stock']}개"
+            " | ".join(
+                pad_display_text(value, column_widths[idx])
+                for idx, value in enumerate(row)
+            )
         )
 
 
