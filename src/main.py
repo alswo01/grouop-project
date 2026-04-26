@@ -649,10 +649,6 @@ def load_cart_items(
                 "[WARNING] 동일 장바구니 내 중복 상품이 발견되어 수량을 합산하였습니다."
             )
 
-        if check_cart_stock_warnings(cart_items, products):
-            print(
-                "[WARNING] 장바구니에 담긴 상품 수량이 현재 재고를 초과하는 항목이 있습니다."
-            )
 
         if orders is not None and has_stale_cart_items(cart_items, carts, orders):
             print("[WARNING] 주문 완료 이후에도 남아 있는 장바구니 항목이 있습니다.")
@@ -1349,11 +1345,7 @@ def add_product_to_cart(user_id: str, product_id: str, quantity: str) -> None:
             item["quantity"] = str(new_quantity)
             save_cart_items(cart_items)
 
-            if new_quantity > int(product["stock"]):
-                print(
-                    "[WARNING] 장바구니에 담긴 상품 수량이 현재 재고를 초과하는 항목이 있습니다."
-                )
-            return
+
 
     # 없으면 새 cart_item 생성
     new_item = {
@@ -1366,10 +1358,6 @@ def add_product_to_cart(user_id: str, product_id: str, quantity: str) -> None:
     cart_items.append(new_item)
     save_cart_items(cart_items)
 
-    if int(quantity) > int(product["stock"]):
-        print(
-            "[WARNING] 장바구니에 담긴 상품 수량이 현재 재고를 초과하는 항목이 있습니다."
-        )
 
 
 def remove_product_from_cart(user_id: str, product_id: str) -> None:
@@ -1531,18 +1519,14 @@ def prompt_add_product_to_cart(current_user: dict) -> str:
 
             add_product_to_cart(user_id, product_id, quantity)
 
-            # 중복 상품 정리 경고를 반드시 한 번 더 보이게 함
-            users = load_users()
-            products = load_products()
-            carts = load_carts(users)
-            load_cart_items(carts, products)
+          
 
             print("상품이 장바구니에 추가되었습니다.")
 
             rows = build_cart_view_rows(user_id)
             for row in rows:
                 if row["product_id"] == product_id and row["stock_warning"]:
-                    print("경고: 현재 재고보다 많이 담겨 있습니다. 실제 주문 가능 여부는 주문 시 확인됩니다.")
+                    print("[WARNING] 장바구니에 담긴 상품 수량이 현재 재고를 초과하는 항목이 있습니다.")
                     break
 
             # 성공 시 사용자 메인 프롬프트로 복귀
