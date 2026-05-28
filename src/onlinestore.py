@@ -829,10 +829,14 @@ def load_products() -> list[dict]:
 
 
 def load_categories() -> list[dict]:
+    lines = [line for line in read_lines(CATEGORY_FILE) if normalize_text(line) != ""]
+    if not lines:
+        ensure_data_dir()
+        write_lines(CATEGORY_FILE, DEFAULT_CATEGORY_RECORDS)
+        lines = DEFAULT_CATEGORY_RECORDS
+
     categories = []
-    for line in read_lines(CATEGORY_FILE):
-        if normalize_text(line) == "":
-            continue
+    for line in lines:
         record = parse_category_record(line)
         if record is not None:
             categories.append(record)
@@ -2326,9 +2330,15 @@ def prompt_add_product_to_cart(current_user: dict) -> None:
 
 
 def prompt_remove_product_from_cart(current_user: dict) -> None:
+    if not get_cart_items_for_user(current_user["user_id"]):
+        print("장바구니가 비어있습니다.")
+        return
+
     while True:
         print("[상품 삭제]")
-        product_id = input("삭제할 상품 ID 입력 > ").strip()
+        product_id = input("삭제할 상품 ID 입력 (0: 이전 메뉴) > ").strip()
+        if product_id == "0":
+            return
         if not is_valid_numeric_id(product_id):
             print("오류: 장바구니에 존재하지 않는 상품입니다.")
             continue
@@ -2546,25 +2556,27 @@ def prompt_order_confirm(current_user: dict) -> None:
     for row in rows:
         print(f"- {row['product_name']} ({row['quantity']}개): {format_money(row['item_total'])}")
     print("---------------------------------------")
-    print("주문 방식을 선택하세요.")
-    print("1. 전체 주문")
-    print("2. 부분 주문")
-    print("0. 뒤로가기")
-    choice = input("선택 > ").strip()
+    while True:
+        print("주문 방식을 선택하세요.")
+        print("1. 전체 주문")
+        print("2. 부분 주문")
+        print("0. 뒤로가기")
+        choice = input("선택 > ").strip()
 
-    if choice == "0":
-        return
-    if choice == "1":
-        selected_product_ids = None
-        order_rows = rows
-    elif choice == "2":
-        selected_product_ids = prompt_select_partial_order_items(current_user, rows)
-        if selected_product_ids is None:
+        if choice == "0":
             return
-        order_rows = rows_for_selected_products(rows, selected_product_ids)
-    else:
-        print("오류 : 올바른 메뉴 번호를 입력하세요.")
-        return
+        if choice == "1":
+            selected_product_ids = None
+            order_rows = rows
+            break
+        if choice == "2":
+            selected_product_ids = prompt_select_partial_order_items(current_user, rows)
+            if selected_product_ids is None:
+                return
+            order_rows = rows_for_selected_products(rows, selected_product_ids)
+            break
+
+        print("오류: 올바른 메뉴 번호를 입력하세요.")
 
     original_price = sum(int(row["item_total"]) for row in order_rows)
     if original_price > 1_000_000:
@@ -3135,7 +3147,7 @@ def admin_order_status_change_flow(order_id: str) -> bool:
     try:
         update_order_status_by_admin(order_id, action_map[choice])
         if choice == "1":
-            print("주문을 수락합니다.")
+            print("해당 주문을 승인합니다.")
         elif choice == "2":
             print("해당 주문을 거절합니다.")
         else:
@@ -3155,7 +3167,12 @@ def admin_order_menu() -> None:
         else:
             print("주문 ID | 사용자 ID | 주문 금액 | 주문 상태 | 비고")
             for order in orders:
-                note = "재고 부족" if order["order_status"] == "PENDING" and is_order_stock_insufficient(order["order_id"]) else ""
+                note = (
+                    "상품 재고 부족"
+                    if order["order_status"] == "PENDING"
+                    and is_order_stock_insufficient(order["order_id"])
+                    else "없음"
+                )
                 print(
                     f"{order['order_id']} | {order['user_id']} | "
                     f"{format_money(int(order['total_price']))} | {order['order_status']} | {note}"
