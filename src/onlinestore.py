@@ -66,9 +66,25 @@ DEFAULT_CATEGORY_RECORDS = [
     "20|기타|0",
 ]
 
+DEFAULT_PRODUCT_RECORDS = [
+    "1|노트북|950000|5",
+    "2|사과즙|12000|30",
+]
+
+DEFAULT_PRODUCT_CATEGORY_RECORDS = [
+    "1|10",
+    "1|11",
+    "2|1",
+    "2|2",
+]
+
 DEFAULT_COUPON_RECORDS = [
-    "1|신규 회원 할인 쿠폰|FIXED|5000|ALL|0|10000|30|SIGNUP|0",
-    "2|주문 감사 쿠폰|RATE|10|ALL|0|30000|14|ORDER_COUNT|3",
+    "1|회원가입할인쿠폰|FIXED|5000|ALL|0|10000|30|SIGNUP|0",
+    "2|주문횟수할인쿠폰|RATE|10|ALL|0|30000|14|ORDER_COUNT|3",
+    "3|회원가입상품할인쿠폰|FIXED|3000|PRODUCT|1|10000|30|SIGNUP|0",
+    "4|주문횟수전체할인쿠폰|RATE|10|ALL|0|30000|14|ORDER_COUNT|3",
+    "5|주문횟수카테고리할인쿠폰|RATE|15|CATEGORY|10|30000|14|ORDER_COUNT|3",
+    "6|주문횟수상품할인쿠폰|FIXED|5000|PRODUCT|1|30000|14|ORDER_COUNT|3",
 ]
 
 ORDER_STATUSES = {
@@ -190,7 +206,7 @@ def is_valid_product_name(value: str) -> bool:
 
 def is_valid_coupon_name(value: str) -> bool:
     value = normalize_text(value)
-    return bool(1 <= len(value) <= 30 and not has_forbidden_separator(value))
+    return bool(1 <= len(value) <= 20 and not has_forbidden_separator(value))
 
 
 def is_valid_nonnegative_amount(value: str) -> bool:
@@ -275,10 +291,90 @@ def initialize_category_file() -> None:
         write_lines(CATEGORY_FILE, DEFAULT_CATEGORY_RECORDS)
 
 
+def initialize_product_file() -> None:
+    lines = [line for line in read_lines(PRODUCT_FILE) if normalize_text(line) != ""]
+    valid_records = [record for record in (parse_product_record(line) for line in lines) if record]
+
+    if not lines or not valid_records:
+        write_lines(PRODUCT_FILE, DEFAULT_PRODUCT_RECORDS)
+        return
+
+    existing_ids = {record["product_id"] for record in valid_records}
+    existing_names = {record["product_name"] for record in valid_records}
+    updated_lines = list(lines)
+
+    for line in DEFAULT_PRODUCT_RECORDS:
+        record = parse_product_record(line)
+        if record is None:
+            continue
+        if record["product_id"] in existing_ids or record["product_name"] in existing_names:
+            continue
+        updated_lines.append(line)
+        existing_ids.add(record["product_id"])
+        existing_names.add(record["product_name"])
+
+    if updated_lines != lines:
+        write_lines(PRODUCT_FILE, updated_lines)
+
+
+def initialize_product_category_file() -> None:
+    lines = [line for line in read_lines(PRODUCT_CATEGORY_FILE) if normalize_text(line) != ""]
+    valid_records = [
+        record
+        for record in (parse_product_category_record(line) for line in lines)
+        if record
+    ]
+
+    products = [record for record in (parse_product_record(line) for line in read_lines(PRODUCT_FILE)) if record]
+    categories = [record for record in (parse_category_record(line) for line in read_lines(CATEGORY_FILE)) if record]
+    valid_product_ids = {product["product_id"] for product in products}
+    valid_category_ids = {category["category_id"] for category in categories}
+    existing_pairs = {
+        (record["product_id"], record["category_id"])
+        for record in valid_records
+    }
+    default_records = []
+
+    for line in DEFAULT_PRODUCT_CATEGORY_RECORDS:
+        record = parse_product_category_record(line)
+        if record is None:
+            continue
+        if record["product_id"] not in valid_product_ids:
+            continue
+        if record["category_id"] not in valid_category_ids:
+            continue
+        pair = (record["product_id"], record["category_id"])
+        if pair in existing_pairs:
+            continue
+        default_records.append(line)
+        existing_pairs.add(pair)
+
+    if not lines or not valid_records:
+        write_lines(PRODUCT_CATEGORY_FILE, default_records)
+    elif default_records:
+        write_lines(PRODUCT_CATEGORY_FILE, lines + default_records)
+
+
 def initialize_coupon_file() -> None:
     lines = [line for line in read_lines(COUPON_FILE) if normalize_text(line) != ""]
-    if not lines:
+    valid_records = [record for record in (parse_coupon_record(line) for line in lines) if record]
+
+    if not lines or not valid_records:
         write_lines(COUPON_FILE, DEFAULT_COUPON_RECORDS)
+        return
+
+    existing_ids = {record["coupon_id"] for record in valid_records}
+    updated_lines = list(lines)
+
+    for line in DEFAULT_COUPON_RECORDS:
+        record = parse_coupon_record(line)
+        if record is None or record["coupon_id"] in existing_ids:
+            continue
+        updated_lines.append(line)
+        existing_ids.add(record["coupon_id"])
+
+    if updated_lines != lines:
+        write_lines(COUPON_FILE, updated_lines)
 
 
 def migrate_legacy_product_file() -> None:
@@ -337,8 +433,10 @@ def initialize_data_files() -> None:
 
     initialize_category_file()
     initialize_user_file()
-    initialize_coupon_file()
     migrate_legacy_product_file()
+    initialize_product_file()
+    initialize_product_category_file()
+    initialize_coupon_file()
 
 
 def print_initialization_result() -> None:
@@ -3155,9 +3253,11 @@ def admin_product_menu() -> None:
         choice = input("선택 > ").strip()
 
         if choice == "1":
-            admin_add_product_flow()
+            if admin_add_product_flow():
+                return
         elif choice == "2":
-            admin_product_edit_flow()
+            if admin_product_edit_flow():
+                return
         elif choice == "3":
             admin_category_menu()
         elif choice == "0":
@@ -3255,7 +3355,8 @@ def admin_order_menu() -> None:
         if find_order_by_order_id(orders, order_id) is None:
             print("오류 : 등록되지 않은 주문 ID입니다.")
             continue
-        admin_order_status_change_flow(order_id)
+        if admin_order_status_change_flow(order_id):
+            return
 
 
 # =====================================
