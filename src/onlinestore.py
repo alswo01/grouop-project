@@ -1,3 +1,4 @@
+import random
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -978,10 +979,6 @@ def load_order_items() -> list[dict]:
 
 
 def load_coupons() -> list[dict]:
-    products = load_products()
-    categories = load_categories()
-    valid_product_ids = {product["product_id"] for product in products}
-    valid_category_ids = {category["category_id"] for category in categories}
     coupons = []
 
     for line in read_lines(COUPON_FILE):
@@ -989,10 +986,6 @@ def load_coupons() -> list[dict]:
             continue
         record = parse_coupon_record(line)
         if record is None:
-            continue
-        if record["target_type"] == "PRODUCT" and record["target_id"] not in valid_product_ids:
-            continue
-        if record["target_type"] == "CATEGORY" and record["target_id"] not in valid_category_ids:
             continue
         coupons.append(record)
 
@@ -1248,6 +1241,49 @@ def find_user_coupon_by_id(user_coupons: list[dict], user_coupon_id: str) -> dic
         if user_coupon["user_coupon_id"] == user_coupon_id:
             return user_coupon
     return None
+
+
+def is_coupon_target_existing(
+    coupon: dict,
+    products: list[dict] | None = None,
+    categories: list[dict] | None = None,
+) -> bool:
+    target_type = coupon["target_type"]
+    target_id = coupon["target_id"]
+
+    if target_type == "ALL":
+        return target_id == "0"
+    if target_type == "PRODUCT":
+        if products is None:
+            products = load_products()
+        return find_product_by_product_id(products, target_id) is not None
+    if target_type == "CATEGORY":
+        if categories is None:
+            categories = load_categories()
+        return find_category_by_id(categories, target_id) is not None
+    return False
+
+
+def get_valid_coupon_issue_candidates(
+    issue_type: str,
+    coupons: list[dict] | None = None,
+    products: list[dict] | None = None,
+    categories: list[dict] | None = None,
+) -> list[dict]:
+    if coupons is None:
+        coupons = load_coupons()
+    if products is None:
+        products = load_products()
+    if categories is None:
+        categories = load_categories()
+
+    issue_type = normalize_text(issue_type)
+    return [
+        coupon
+        for coupon in coupons
+        if coupon["issue_type"] == issue_type
+        and is_coupon_target_existing(coupon, products, categories)
+    ]
 
 
 def get_order_items_by_order_id(order_items: list[dict], order_id: str) -> list[dict]:
@@ -1721,15 +1757,22 @@ def issue_coupon_to_user(user_id: str, coupon_id: str, issued_at: str) -> dict:
 
 
 def issue_signup_coupon_if_needed(user_id: str) -> None:
-    signup_coupons = [
-        coupon for coupon in load_coupons() if coupon["issue_type"] == "SIGNUP"
-    ]
-    if not signup_coupons:
+    coupons = load_coupons()
+    products = load_products()
+    categories = load_categories()
+    valid_candidates = get_valid_coupon_issue_candidates(
+        "SIGNUP",
+        coupons,
+        products,
+        categories,
+    )
+    if not valid_candidates:
         return
 
     try:
         issued_at = prompt_virtual_current_time("신규 회원 쿠폰 발급 기준 시간을 입력하세요.")
-        issue_coupon_to_user(user_id, signup_coupons[0]["coupon_id"], issued_at)
+        selected_coupon = random.choice(valid_candidates)
+        issue_coupon_to_user(user_id, selected_coupon["coupon_id"], issued_at)
         print("신규 회원 쿠폰 1장이 발급되었습니다.")
     except ValueError as error:
         print(f"오류 : {error}")
@@ -1743,27 +1786,38 @@ def issue_order_count_coupon_if_needed(user_id: str, order_time: str) -> list[di
 
     orders = load_orders()
     coupons = load_coupons()
-    user_order_count = sum(
+    products = load_products()
+    categories = load_categories()
+    accepted_count = sum(
         1
         for order in orders
         if order["user_id"] == normalize_text(user_id)
-        and order["order_status"] in {"PENDING", "ACCEPTED", "CANCEL_REQUESTED"}
+        and order["order_status"] == "ACCEPTED"
     )
-    issued = []
+    if accepted_count <= 0:
+        return []
 
+    valid_candidates = []
     for coupon in coupons:
         if coupon["issue_type"] != "ORDER_COUNT":
             continue
         threshold = int(coupon["issue_threshold"])
         if threshold <= 0:
             continue
-        if user_order_count > 0 and user_order_count % threshold == 0:
-            try:
-                issued.append(issue_coupon_to_user(user_id, coupon["coupon_id"], order_time))
-            except ValueError:
-                continue
+        if accepted_count % threshold != 0:
+            continue
+        if not is_coupon_target_existing(coupon, products, categories):
+            continue
+        valid_candidates.append(coupon)
 
-    return issued
+    if not valid_candidates:
+        return []
+
+    try:
+        selected_coupon = random.choice(valid_candidates)
+        return [issue_coupon_to_user(user_id, selected_coupon["coupon_id"], order_time)]
+    except ValueError:
+        return []
 
 
 def calculate_coupon_target_amount(
@@ -1852,6 +1906,8 @@ def get_available_user_coupons(
 
         coupon = coupon_map.get(user_coupon["coupon_id"])
         if coupon is None:
+            continue
+        if not is_coupon_target_existing(coupon, products, categories):
             continue
         if original_price < int(coupon["min_order_price"]):
             continue
@@ -1989,6 +2045,8 @@ def create_order_from_cart(
         coupon = find_coupon_by_coupon_id(coupons, user_coupon["coupon_id"])
         if coupon is None:
             raise ValueError("사용할 수 없는 쿠폰입니다.")
+        if not is_coupon_target_existing(coupon, products, categories):
+            raise ValueError("쿠폰의 적용대상이 존재하지 않습니다.")
         if original_price < int(coupon["min_order_price"]):
             raise ValueError("쿠폰 최소 주문 금액을 만족하지 않습니다.")
 
@@ -2045,7 +2103,6 @@ def create_order_from_cart(
     save_order_items(order_items)
     save_cart_items(remaining_cart_items)
     save_user_coupons(user_coupons)
-    issue_order_count_coupon_if_needed(user_id, order_time)
 
     return new_order
 
@@ -2742,6 +2799,8 @@ def prompt_my_coupons(current_user: dict) -> None:
     try:
         current_time = prompt_virtual_current_time("쿠폰 조회 기준 시간을 입력하세요.")
         coupons = load_coupons()
+        products = load_products()
+        categories = load_categories()
         user_coupons = [
             item
             for item in load_user_coupons(load_users(), coupons)
@@ -2776,7 +2835,10 @@ def prompt_my_coupons(current_user: dict) -> None:
         elif current_time > user_coupon["expires_at"]:
             summary[coupon_id]["expired"] += 1
         elif user_coupon["issued_at"] <= current_time <= user_coupon["expires_at"]:
-            summary[coupon_id]["available"] += 1
+            if is_coupon_target_existing(coupon, products, categories):
+                summary[coupon_id]["available"] += 1
+            else:
+                summary[coupon_id]["expired"] += 1
 
     print("[내 쿠폰 목록]")
     print(f"총 {len(user_coupons)}장")
@@ -3148,6 +3210,12 @@ def admin_order_status_change_flow(order_id: str) -> bool:
         update_order_status_by_admin(order_id, action_map[choice])
         if choice == "1":
             print("해당 주문을 승인합니다.")
+            issued_coupons = issue_order_count_coupon_if_needed(
+                order["user_id"],
+                order["order_time"],
+            )
+            if issued_coupons:
+                print("주문 감사 쿠폰 1장이 발급되었습니다.")
         elif choice == "2":
             print("해당 주문을 거절합니다.")
         else:
