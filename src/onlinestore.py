@@ -2727,7 +2727,7 @@ def prompt_order_confirm(current_user: dict) -> None:
         if choice == "2":
             selected_product_ids = prompt_select_partial_order_items(current_user, rows)
             if selected_product_ids is None:
-                return
+                continue
             order_rows = rows_for_selected_products(rows, selected_product_ids)
             break
 
