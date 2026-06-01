@@ -3253,9 +3253,11 @@ def admin_product_menu() -> None:
         choice = input("선택 > ").strip()
 
         if choice == "1":
-            admin_add_product_flow()
+            if admin_add_product_flow():
+                return
         elif choice == "2":
-            admin_product_edit_flow()
+            if admin_product_edit_flow():
+                return
         elif choice == "3":
             admin_category_menu()
         elif choice == "0":
@@ -3353,7 +3355,8 @@ def admin_order_menu() -> None:
         if find_order_by_order_id(orders, order_id) is None:
             print("오류 : 등록되지 않은 주문 ID입니다.")
             continue
-        admin_order_status_change_flow(order_id)
+        if admin_order_status_change_flow(order_id):
+            return
 
 
 # =====================================
